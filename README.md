@@ -1,34 +1,27 @@
-﻿# Chat 2
-#### Electric Boogaloo - ♪ A whole new chat, a new fantastic chat window ♪
+﻿# Chat 2 Vanilla
 
-Chat 2 is a complete rewrite of the in-game chat window as a plugin.
-It supports:
+Fork of [Chat 2](https://github.com/Infiziert90/ChatTwo) by Anna (ascclemens) and Infi (Infiziert90), licensed under the [EUPL-1.2](LICENCE). This copy was modified on 2026-11-03. See [NOTICE](NOTICE).
 
-- Unlimited tabs
-- Tabs that always send to a certain channel
-- More flexible filtering
-- RGB channel colouring
-- Completely variable font size
-- Sidebar tabs
-- Unread counts
-- Emotes
-- Screenshot mode (obfuscate names)
+Chat 2 Vanilla keeps Chat 2's tabs, filters, input, autocomplete, links, and emotes. A **Vanilla style** option draws the main chat window with the game's chat-log textures, the Axis font, the game's channel colours, and the game's log transparency. Turn the option off to get the original Chat 2 look. Drawing stays in ImGui (`Dalamud.Bindings.ImGui` and `ImRaii`). It does not use KamiToolKit or a native addon.
 
----
+The assembly name is `ChatTwoVanilla`, so it can be installed next to Chat 2. Commands are `/chat2vanilla` and `/clearlog2vanilla`. IPC channels are `ChatTwoVanilla.*`. Details of the reskin are in [VANILLA_STYLE.md](VANILLA_STYLE.md).
 
-### Chat Window
-![chatWindow.png](ChatTwo/images/chatWindow.png)
+## Build
 
-### With SimpleTweaks "Chat Name Colors"
-![withSimpleTweaks.png](ChatTwo/images/withSimpleTweaks.png)
+The project targets `net10.0-windows` through `Dalamud.NET.Sdk` 15.0.0.
 
----
+1. Install the .NET 10 SDK.
+2. Put a Dalamud API 15 dev build where the SDK looks for it: `~/.xlcore/dalamud/Hooks/dev` on Linux, or `%AppData%\XIVLauncher\dalamud\Hooks\dev` on Windows. `DALAMUD_HOME` overrides that directory. The dev folder must contain `Dalamud.dll` and the other assemblies from a Dalamud 15 distribution (`latest.zip` from [dalamud-distrib](https://github.com/goatcorp/dalamud-distrib)).
+3. From the repository root:
 
-### IPC Integration
-Other plugins can easily integrate their functionality into the context menu of chat2
-For more infos read [IPC Guide](ipc.md)
+```bash
+dotnet build ChatTwo/ChatTwo.csproj -c Release
+```
 
----
+The packager writes `ChatTwo/bin/Release/ChatTwoVanilla.dll` and `ChatTwoVanilla.json`. Install that output the way you install any locally built Dalamud plugin. The internal name in the manifest is `ChatTwoVanilla`, and the config file is separate from Chat 2's.
 
-### Thanks to
-The original dev Anna~
+This repository was built on a machine that cannot launch FFXIV. A successful `dotnet build` does not prove the window matches the game. Use the checklist in [VANILLA_STYLE.md](VANILLA_STYLE.md) in-game.
+
+## Credits
+
+Chat 2 is by Anna (ascclemens) and Infi (Infiziert90), with the translators listed in the plugin's About tab. This fork keeps that authorship and the EUPL-1.2 licence.

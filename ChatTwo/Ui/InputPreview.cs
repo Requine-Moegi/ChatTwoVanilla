@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using ChatTwo.Code;
 using ChatTwo.Resources;
 using ChatTwo.Ui.Handler;
+using ChatTwo.Ui.Style;
 using ChatTwo.Util;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
@@ -31,7 +32,7 @@ public partial class InputPreview : Window
 
     public int SelectedCursorPos = -1;
 
-    public InputPreview(InputHandler inputHandler) : base("##chat2-inputpreview")
+    public InputPreview(InputHandler inputHandler) : base("##chat2vanilla-inputpreview")
     {
         Flags = ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoMove |
                 ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoScrollbar;
@@ -107,6 +108,7 @@ public partial class InputPreview : Window
 
     public override void Draw()
     {
+        using var font = ChatChrome.PushContentFont();
         CalculatePreview();
         DrawPreview();
     }

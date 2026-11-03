@@ -12,6 +12,10 @@ public class FontManager
     public IFontHandle Axis = null!;
     public IFontHandle AxisItalic = null!;
 
+    private IFontHandle? _vanillaAxis;
+    private IFontHandle? _vanillaAxisItalic;
+    private float _vanillaAxisPt = -1f;
+
     public IFontHandle RegularFont = null!;
     public IFontHandle? ItalicFont;
 
@@ -161,5 +165,43 @@ public class FontManager
 
     public static float SizeInPt(float px) => (float) (px * 3.0 / 4.0);
     public static float SizeInPx(float pt) => (float) (pt * 4.0 / 3.0);
-    public static float GetFontSize() => Plugin.Config.FontsEnabled ? Plugin.Config.GlobalFontV2.SizePx : SizeInPx(Plugin.Config.FontSizeV2);
+    public static float GetFontSize() => Plugin.Config.VanillaStyle
+        ? SizeInPx(Ui.Style.VanillaGameLook.LogFontSizePt())
+        : Plugin.Config.FontsEnabled ? Plugin.Config.GlobalFontV2.SizePx : SizeInPx(Plugin.Config.FontSizeV2);
+
+    /// <summary>
+    /// Axis at the game's chat-log size. Rebuilt only when that size changes.
+    /// </summary>
+    public IDisposable PushVanillaAxis()
+    {
+        EnsureVanillaAxis();
+        return _vanillaAxis!.Push();
+    }
+
+    public IFontHandle VanillaAxisItalic
+    {
+        get
+        {
+            EnsureVanillaAxis();
+            return _vanillaAxisItalic!;
+        }
+    }
+
+    private void EnsureVanillaAxis()
+    {
+        var pt = Ui.Style.VanillaGameLook.LogFontSizePt();
+        if (_vanillaAxis != null && _vanillaAxisItalic != null && Math.Abs(_vanillaAxisPt - pt) < 0.05f)
+            return;
+
+        _vanillaAxis?.Dispose();
+        _vanillaAxisItalic?.Dispose();
+        _vanillaAxisPt = pt;
+
+        var px = SizeInPx(pt);
+        _vanillaAxis = Plugin.Interface.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Axis, px));
+        _vanillaAxisItalic = Plugin.Interface.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Axis, px)
+        {
+            SkewStrength = px / 6f,
+        });
+    }
 }

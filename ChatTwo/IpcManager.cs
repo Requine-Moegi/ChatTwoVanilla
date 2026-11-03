@@ -15,15 +15,15 @@ public sealed class IpcManager : IDisposable
 
     public IpcManager()
     {
-        RegisterGate = Plugin.Interface.GetIpcProvider<string>("ChatTwo.Register");
+        RegisterGate = Plugin.Interface.GetIpcProvider<string>($"{Plugin.IpcPrefix}.Register");
         RegisterGate.RegisterFunc(Register);
 
-        AvailableGate = Plugin.Interface.GetIpcProvider<object?>("ChatTwo.Available");
+        AvailableGate = Plugin.Interface.GetIpcProvider<object?>($"{Plugin.IpcPrefix}.Available");
 
-        UnregisterGate = Plugin.Interface.GetIpcProvider<string, object?>("ChatTwo.Unregister");
+        UnregisterGate = Plugin.Interface.GetIpcProvider<string, object?>($"{Plugin.IpcPrefix}.Unregister");
         UnregisterGate.RegisterAction(Unregister);
 
-        InvokeGate = Plugin.Interface.GetIpcProvider<string, PlayerPayload?, ulong, Payload?, SeString?, SeString?, object?>("ChatTwo.Invoke");
+        InvokeGate = Plugin.Interface.GetIpcProvider<string, PlayerPayload?, ulong, Payload?, SeString?, SeString?, object?>($"{Plugin.IpcPrefix}.Invoke");
 
         AvailableGate.SendMessage();
     }

@@ -1,4 +1,5 @@
 using System.Numerics;
+using ChatTwo.Ui.Style;
 using ChatTwo.Util;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
@@ -12,7 +13,7 @@ public class CommandHelpWindow : Window {
     private ChatLog.ChatLog ChatLogWindow { get; }
     private ReadOnlySeString? CommandDescription { get; set; }
 
-    public CommandHelpWindow(ChatLog.ChatLog chatLogWindow) : base("command help##chat2-commandhelp")
+    public CommandHelpWindow(ChatLog.ChatLog chatLogWindow) : base("command help##chat2vanilla-commandhelp")
     {
         ChatLogWindow = chatLogWindow;
 
@@ -59,6 +60,7 @@ public class CommandHelpWindow : Window {
         if (CommandDescription == null)
             return;
 
+        using var font = ChatChrome.PushContentFont();
         ChatLogWindow.InputHandler.ChunkHandler.DrawChunks(ChunkUtil.ToChunks(CommandDescription.Value.ToDalamudString(), ChunkSource.None, null).ToList());
     }
 }

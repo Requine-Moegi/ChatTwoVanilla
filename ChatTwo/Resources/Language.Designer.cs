@@ -4145,5 +4145,32 @@ namespace ChatTwo.Resources {
                 return ResourceManager.GetString("Webinterface_UsageNotice", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Vanilla style.
+        /// </summary>
+        internal static string Options_VanillaStyle_Name {
+            get {
+                return ResourceManager.GetString("Options_VanillaStyle_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Draw the chat log with the game's chat window textures.
+        /// </summary>
+        internal static string Options_VanillaStyle_Description {
+            get {
+                return ResourceManager.GetString("Options_VanillaStyle_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to While vanilla style is on, the Dalamud style override is not applied.
+        /// </summary>
+        internal static string Options_VanillaStyle_OverrideIgnored {
+            get {
+                return ResourceManager.GetString("Options_VanillaStyle_OverrideIgnored", resourceCulture);
+            }
+        }
     }
 }

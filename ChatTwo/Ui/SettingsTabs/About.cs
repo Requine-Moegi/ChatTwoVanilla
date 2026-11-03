@@ -39,6 +39,11 @@ public sealed class About : ISettingsTab
 
         ImGuiHelpers.ScaledDummy(10.0f);
 
+        ImGui.TextUnformatted("Chat 2 Vanilla is a fork of Chat 2. The original plugin is by Anna (ascclemens) and Infi (Infiziert90), licensed under the EUPL-1.2. This copy was modified on 2026-11-03.");
+        ImGui.TextUnformatted("Upstream: https://github.com/Infiziert90/ChatTwo");
+
+        ImGuiHelpers.ScaledDummy(10.0f);
+
         ImGui.TextUnformatted(Language.Options_About_Authors);
         ImGui.SameLine();
         ImGui.TextColored(ImGuiColors.ParsedGold, Plugin.Interface.Manifest.Author);

@@ -1,7 +1,14 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
     <PropertyGroup>
-        <Version>1.41.2</Version>
+        <AssemblyName>ChatTwoVanilla</AssemblyName>
+        <RootNamespace>ChatTwo</RootNamespace>
+        <Version>1.42.0</Version>
         <ImplicitUsings>enable</ImplicitUsings>
+        <Authors>Infi, Anna</Authors>
+        <Company>Infi, Anna</Company>
+        <Product>Chat 2 Vanilla</Product>
+        <Description>EUPL-1.2 fork of Chat 2 by Anna (ascclemens) and Infi (Infiziert90). Modified 2026-11-03 to add a toggleable vanilla chat-log style.</Description>
+        <Copyright>Anna (ascclemens), Infi (Infiziert90), and contributors. Licensed under the EUPL-1.2.</Copyright>
     </PropertyGroup>
 
     <ItemGroup>

@@ -124,6 +124,11 @@ public class Configuration : IPluginConfiguration
     public bool OverrideStyle;
     public string? ChosenStyle;
 
+    /// <summary>
+    /// Draw the chat log with the game's chat-window textures. Off keeps the original Chat 2 ImGui look.
+    /// </summary>
+    public bool VanillaStyle = true;
+
     public ConfigKeyBind? ChatTabForward;
     public ConfigKeyBind? ChatTabBackward;
 
@@ -201,6 +206,7 @@ public class Configuration : IPluginConfiguration
         Tabs = other.Tabs.Select(t => t.Clone()).ToList();
         OverrideStyle = other.OverrideStyle;
         ChosenStyle = other.ChosenStyle;
+        VanillaStyle = other.VanillaStyle;
         ChatTabForward = other.ChatTabForward;
         ChatTabBackward = other.ChatTabBackward;
         WebinterfaceEnabled = other.WebinterfaceEnabled;

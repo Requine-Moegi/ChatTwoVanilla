@@ -1,0 +1,10 @@
+This project is a modified version of Chat 2 (ChatTwo).
+
+Original work: Anna (ascclemens) and Infi (Infiziert90)
+Upstream: https://github.com/Infiziert90/ChatTwo
+Licence: European Union Public Licence, version 1.2 (EUPL-1.2). The full text is in LICENCE.
+
+Modification date: 2026-11-03
+Modification: Chat 2 Vanilla (assembly and internal name ChatTwoVanilla). The chat log can be drawn with the game's own UI textures, Axis font, channel colours, and log transparency, while the original Chat 2 look remains available. Commands, ImGui window ids, and IPC channels are renamed so this plugin can load beside Chat 2.
+
+The original source was imported with its git history. Commits after that import are the fork.

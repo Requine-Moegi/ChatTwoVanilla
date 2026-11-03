@@ -1,7 +1,11 @@
 # Context Menu IPC Integration
 
+Chat 2 Vanilla registers IPC under `ChatTwoVanilla.*` so it can load beside the
+original Chat 2 plugin, which keeps `ChatTwo.*`. The examples below use this
+fork's channel names. The C# type `ChatTwo.Code.ChatType` is unchanged.
+
 If you want to display custom menu items in the chat context menu, you can use
-Chat 2's IPC.
+Chat 2 Vanilla's IPC.
 
 Here's an example.
 
@@ -23,10 +27,10 @@ public class ContextMenuIntegration {
     private string? _id;
 
     public ChatTwoIpc(DalamudPluginInterface @interface) {
-        this.Register = @interface.GetIpcSubscriber<string>("ChatTwo.Register");
-        this.Unregister = @interface.GetIpcSubscriber<string, object?>("ChatTwo.Unregister");
-        this.Invoke = @interface.GetIpcSubscriber<string, PlayerPayload?, ulong, Payload?, SeString?, SeString?, object?>("ChatTwo.Invoke");
-        this.Available = @interface.GetIpcSubscriber<object?>("ChatTwo.Available");
+        this.Register = @interface.GetIpcSubscriber<string>("ChatTwoVanilla.Register");
+        this.Unregister = @interface.GetIpcSubscriber<string, object?>("ChatTwoVanilla.Unregister");
+        this.Invoke = @interface.GetIpcSubscriber<string, PlayerPayload?, ulong, Payload?, SeString?, SeString?, object?>("ChatTwoVanilla.Invoke");
+        this.Available = @interface.GetIpcSubscriber<object?>("ChatTwoVanilla.Available");
     }
 
     public void Enable() {
@@ -77,8 +81,8 @@ public class ContextMenuIntegration {
 
 If you need to know whether the player is currently interacting with Chat 2's
 input box, subscribe to the typing IPC.
-- `ChatTwo.GetChatInputState`: call this function to retrieve the current state.
-- `ChatTwo.ChatInputStateChanged`: subscribe to this event to receive updates
+- `ChatTwoVanilla.GetChatInputState`: call this function to retrieve the current state.
+- `ChatTwoVanilla.ChatInputStateChanged`: subscribe to this event to receive updates
   whenever the state changes (and once immediately after subscribing).
 Both IPC endpoints use the same tuple payload:
 ```
@@ -103,8 +107,8 @@ public sealed class TypingIntegration {
     private ICallGateSubscriber<(bool InputVisible, bool InputFocused, bool HasText, bool IsTyping, int TextLength, ChatType ChannelType)> GetChatInputState { get; }
     private ICallGateSubscriber<(bool InputVisible, bool InputFocused, bool HasText, bool IsTyping, int TextLength, ChatType ChannelType)> ChatInputStateChanged { get; }
     public TypingIntegration(DalamudPluginInterface @interface) {
-        this.GetChatInputState = @interface.GetIpcSubscriber<(bool, bool, bool, bool, int, ChatType)>("ChatTwo.GetChatInputState");
-        this.ChatInputStateChanged = @interface.GetIpcSubscriber<(bool, bool, bool, bool, int, ChatType)>("ChatTwo.ChatInputStateChanged");
+        this.GetChatInputState = @interface.GetIpcSubscriber<(bool, bool, bool, bool, int, ChatType)>("ChatTwoVanilla.GetChatInputState");
+        this.ChatInputStateChanged = @interface.GetIpcSubscriber<(bool, bool, bool, bool, int, ChatType)>("ChatTwoVanilla.ChatInputStateChanged");
     }
     public void Enable() {
         this.ChatInputStateChanged.Subscribe(OnChatInputStateChanged);

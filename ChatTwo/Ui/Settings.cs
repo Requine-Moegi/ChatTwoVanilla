@@ -17,7 +17,7 @@ public sealed class SettingsWindow : Window
     private List<ISettingsTab> Tabs { get; }
     private int CurrentTab;
 
-    public SettingsWindow(Plugin plugin) : base($"{Language.Settings_Title.Format(Plugin.PluginName)}###chat2-settings")
+    public SettingsWindow(Plugin plugin) : base($"{Language.Settings_Title.Format(Plugin.PluginName)}###chat2vanilla-settings")
     {
         Flags = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
 
@@ -52,14 +52,14 @@ public sealed class SettingsWindow : Window
 
         Initialise();
 
-        Plugin.Commands.Register("/chat2", "Perform various actions with Chat 2.").Execute += Command;
+        Plugin.Commands.Register(Plugin.MainCommand, "Perform various actions with Chat 2 Vanilla.").Execute += Command;
         Plugin.Interface.UiBuilder.OpenConfigUi += Toggle;
     }
 
     public void Dispose()
     {
         Plugin.Interface.UiBuilder.OpenConfigUi -= Toggle;
-        Plugin.Commands.Register("/chat2").Execute -= Command;
+        Plugin.Commands.Register(Plugin.MainCommand).Execute -= Command;
     }
 
     private void Command(string command, string args)

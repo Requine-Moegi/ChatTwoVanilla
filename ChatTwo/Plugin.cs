@@ -22,7 +22,13 @@ namespace ChatTwo;
 // ReSharper disable once ClassNeverInstantiated.Global
 public sealed class Plugin : IDalamudPlugin
 {
-    public const string PluginName = "Chat 2";
+    public const string PluginName = "Chat 2 Vanilla";
+    public const string IpcPrefix = "ChatTwoVanilla";
+    public const string MainCommand = "/chat2vanilla";
+    public const string ClearCommand = "/clearlog2vanilla";
+    public const string ViewerCommand = "/chat2vanillaViewer";
+    public const string DebuggerCommand = "/chat2vanillaDebugger";
+    public const string SeStringCommand = "/chat2vanillaSeString";
 
     [PluginService] public static IPluginLog Log { get; private set; } = null!;
     [PluginService] public static IDalamudPluginInterface Interface { get; private set; } = null!;
@@ -45,6 +51,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] public static IPlayerState PlayerState { get; private set; } = null!;
     [PluginService] public static ISeStringEvaluator Evaluator { get; private set; } = null!;
 
+    public static Plugin Instance { get; private set; } = null!;
     public static Configuration Config = null!;
     public static FileDialogManager FileDialogManager { get; private set; } = null!;
 
@@ -87,6 +94,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public Plugin()
     {
+        Instance = this;
         try
         {
             GameStarted = Process.GetCurrentProcess().StartTime.ToUniversalTime();

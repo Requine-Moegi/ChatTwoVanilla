@@ -17,7 +17,7 @@ public class SeStringDebugger : Window
 {
     private readonly Plugin Plugin;
 
-    public SeStringDebugger(Plugin plugin) : base("SeString Debugger###chat2-sestringdebugger")
+    public SeStringDebugger(Plugin plugin) : base("SeString Debugger###chat2vanilla-sestringdebugger")
     {
         Plugin = plugin;
 
@@ -31,14 +31,14 @@ public class SeStringDebugger : Window
         DisableWindowSounds = true;
 
         #if DEBUG
-        Plugin.Commands.Register("/chat2SeString", showInHelp: false).Execute += Toggle;
+        Plugin.Commands.Register(Plugin.SeStringCommand, showInHelp: false).Execute += Toggle;
         #endif
     }
 
     public void Dispose()
     {
         #if DEBUG
-        Plugin.Commands.Register("/chat2SeString", showInHelp: false).Execute -= Toggle;
+        Plugin.Commands.Register(Plugin.SeStringCommand, showInHelp: false).Execute -= Toggle;
         #endif
     }
 

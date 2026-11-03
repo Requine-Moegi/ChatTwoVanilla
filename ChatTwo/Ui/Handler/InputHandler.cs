@@ -4,6 +4,7 @@ using ChatTwo.Code;
 using ChatTwo.GameFunctions;
 using ChatTwo.GameFunctions.Types;
 using ChatTwo.Resources;
+using ChatTwo.Ui.Style;
 using ChatTwo.Util;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
@@ -75,7 +76,13 @@ public class InputHandler
         }
 
         var normalColor = ImGui.GetColorU32(ImGuiCol.Text);
-        var inputColour = Plugin.Config.ChatColours.TryGetValue(inputType, out var inputCol) ? inputCol : inputType.DefaultColor();
+        uint? inputColour;
+        if (Plugin.Config.ChatColours.TryGetValue(inputType, out var inputCol))
+            inputColour = inputCol;
+        else if (Plugin.Config.VanillaStyle)
+            inputColour = Plugin.Functions.Chat.GetChannelColor(inputType) ?? inputType.DefaultColor();
+        else
+            inputColour = inputType.DefaultColor();
 
         if (!isCommand && Plugin.ExtraChat.ChannelOverride is var (_, overrideColour))
             inputColour = overrideColour;

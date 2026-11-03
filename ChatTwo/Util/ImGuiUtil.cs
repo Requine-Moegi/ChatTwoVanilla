@@ -4,6 +4,7 @@ using ChatTwo.Code;
 using ChatTwo.GameFunctions.Types;
 using ChatTwo.Resources;
 using ChatTwo.Ui.Handler;
+using ChatTwo.Ui.Style;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface;
@@ -65,6 +66,7 @@ public static class ImGuiUtil
         {
             var oldPos = ImGui.GetCursorScreenPos();
 
+            VanillaText.DrawEdge(oldPos, text, textEnd);
             ImGuiNative.TextUnformatted(text, textEnd);
             PostPayload(chunk, handler);
 

@@ -34,9 +34,9 @@ public partial class ChatLog
                 Plugin.MessageManager.ClearAllTabs();
                 break;
             case "help":
-                Plugin.ChatGui.Print("- /clearlog2: clears the active tab's log");
-                Plugin.ChatGui.Print("- /clearlog2 all: clears all tabs' logs and the global history");
-                Plugin.ChatGui.Print("- /clearlog2 help: shows this help");
+                Plugin.ChatGui.Print($"- {Plugin.ClearCommand}: clears the active tab's log");
+                Plugin.ChatGui.Print($"- {Plugin.ClearCommand} all: clears all tabs' logs and the global history");
+                Plugin.ChatGui.Print($"- {Plugin.ClearCommand} help: shows this help");
                 break;
             default:
                 if (Plugin.LastTab > -1 && Plugin.LastTab < Plugin.Config.Tabs.Count)

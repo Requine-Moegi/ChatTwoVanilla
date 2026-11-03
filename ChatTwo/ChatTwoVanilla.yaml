@@ -1,0 +1,29 @@
+name: Chat 2 Vanilla
+author: Infi, Anna
+punchline: Chat 2, skinned like the vanilla chat log.
+description: |-
+  Fork of Chat 2, modified 2026-11-03.
+  Original work by Anna (ascclemens) and Infi (Infiziert90), licensed under the EUPL-1.2.
+  Upstream: https://github.com/Infiziert90/ChatTwo
+
+  Chat 2 Vanilla keeps Chat 2's tabs, filters, input, autocomplete, links, and emotes.
+  A "Vanilla style" option draws the main chat window with the game's own UI textures,
+  Axis font, channel colours, and log transparency. Turn it off for the original Chat 2 look.
+
+  This plugin's internal name is ChatTwoVanilla, so it can be installed next to Chat 2.
+  Its IPC channels are ChatTwoVanilla.* and do not collide with ChatTwo.*.
+repo_url: https://github.com/Infiziert90/ChatTwo
+accepts_feedback: true
+tags:
+  - Social
+  - UI
+  - Chat
+  - Replacement
+changelog: |-
+  **Chat 2 Vanilla (fork, 2026-11-03)**
+  - Toggleable vanilla chat-log style drawn in ImGui from the game's ULD textures
+  - Renamed to ChatTwoVanilla so it can coexist with Chat 2 (separate commands and IPC)
+
+  **Inherited from Chat 2**
+  - Unlimited tabs, filters, emotes, autocomplete, links, and the web interface
+  - See the upstream changelog for earlier Chat 2 changes

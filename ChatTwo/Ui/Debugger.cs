@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using ChatTwo.Code;
+using ChatTwo.Ui.Style;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
@@ -14,7 +15,7 @@ public class DebuggerWindow : Window
     private readonly Plugin Plugin;
     private readonly ChatLog.ChatLog ChatLogWindow;
 
-    public DebuggerWindow(Plugin plugin) : base("Debugger###chat2-debugger")
+    public DebuggerWindow(Plugin plugin) : base("Debugger###chat2vanilla-debugger")
     {
         Plugin = plugin;
         ChatLogWindow = plugin.ChatLog;
@@ -28,12 +29,12 @@ public class DebuggerWindow : Window
         RespectCloseHotkey = false;
         DisableWindowSounds = true;
 
-        Plugin.Commands.Register("/chat2Debugger", showInHelp: false).Execute += Toggle;
+        Plugin.Commands.Register(Plugin.DebuggerCommand, showInHelp: false).Execute += Toggle;
     }
 
     public void Dispose()
     {
-        Plugin.Commands.Register("/chat2Debugger", showInHelp: false).Execute -= Toggle;
+        Plugin.Commands.Register(Plugin.DebuggerCommand, showInHelp: false).Execute -= Toggle;
     }
 
     private void Toggle(string _, string __) => Toggle();
@@ -68,5 +69,11 @@ public class DebuggerWindow : Window
 
         ImGui.TextColored(ImGuiColors.DalamudOrange, "Vanilla Chat");
         ImGui.TextUnformatted($"Channel: {new ReadOnlySeString(AgentChatLog.Instance()->ChannelLabel).ExtractText()}");
+
+        ImGuiHelpers.ScaledDummy(5.0f);
+
+        ImGui.TextColored(ImGuiColors.DalamudOrange, "Vanilla style");
+        ChatChrome.Uld.EnsureLoaded();
+        ImGui.TextWrapped(ChatChrome.Uld.Summary);
     }
 }

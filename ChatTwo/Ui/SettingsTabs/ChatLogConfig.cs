@@ -23,6 +23,9 @@ public sealed class ChatLogConfig : ISettingsTab
     {
         using (ImRaii.TextWrapPos(0.0f))
         {
+            ImGuiUtil.OptionCheckbox(ref Mutable.VanillaStyle, Language.Options_VanillaStyle_Name, Language.Options_VanillaStyle_Description);
+            ImGui.Spacing();
+
             ImGuiUtil.OptionCheckbox(ref Mutable.KeepInputFocus, Language.Options_KeepInputFocus_Name, Language.Options_KeepInputFocus_Description);
             ImGui.Spacing();
 
@@ -67,6 +70,8 @@ public sealed class ChatLogConfig : ISettingsTab
             ImGui.Spacing();
 
             ImGuiUtil.OptionCheckbox(ref Mutable.OverrideStyle, Language.Options_OverrideStyle_Name, Language.Options_OverrideStyle_Name_Desc);
+            if (Mutable.VanillaStyle)
+                ImGuiUtil.HelpText(Language.Options_VanillaStyle_OverrideIgnored);
             ImGui.Spacing();
 
             ImGui.Spacing();

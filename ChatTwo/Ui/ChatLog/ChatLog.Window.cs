@@ -6,6 +6,7 @@ using ChatTwo.GameFunctions;
 using ChatTwo.GameFunctions.Types;
 using ChatTwo.Resources;
 using ChatTwo.Ui.Handler;
+using ChatTwo.Ui.Style;
 using ChatTwo.Util;
 using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Text.SeStringHandling;
@@ -47,7 +48,7 @@ public partial class ChatLog : Window, IChatWindow
     public readonly List<bool> PopOutDocked = [];
     public readonly HashSet<Guid> PopOutWindows = [];
 
-    public ChatLog(Plugin plugin) : base($"{Plugin.PluginName}###chat2")
+    public ChatLog(Plugin plugin) : base($"{Plugin.PluginName}###chat2vanilla")
     {
         Plugin = plugin;
 
@@ -62,8 +63,8 @@ public partial class ChatLog : Window, IChatWindow
 
         InputHandler = new InputHandler(this, plugin, "MainChatLog");
 
-        Plugin.Commands.Register("/clearlog2", "Clear the Chat 2 chat log").Execute += ClearLog;
-        Plugin.Commands.Register("/chat2").Execute += ToggleChat;
+        Plugin.Commands.Register(Plugin.ClearCommand, "Clear the Chat 2 Vanilla chat log").Execute += ClearLog;
+        Plugin.Commands.Register(Plugin.MainCommand).Execute += ToggleChat;
 
         Plugin.ClientState.Login += Login;
         Plugin.ClientState.Logout += Logout;
@@ -79,8 +80,8 @@ public partial class ChatLog : Window, IChatWindow
 
         Plugin.ClientState.Logout -= Logout;
         Plugin.ClientState.Login -= Login;
-        Plugin.Commands.Register("/chat2").Execute -= ToggleChat;
-        Plugin.Commands.Register("/clearlog2").Execute -= ClearLog;
+        Plugin.Commands.Register(Plugin.MainCommand).Execute -= ToggleChat;
+        Plugin.Commands.Register(Plugin.ClearCommand).Execute -= ClearLog;
     }
 
     private void Logout(int _, int __)
@@ -270,11 +271,19 @@ public partial class ChatLog : Window, IChatWindow
         if (!Plugin.Config.CanResize)
             Flags |= ImGuiWindowFlags.NoResize;
 
-        if (!Plugin.Config.ShowTitleBar)
-            Flags |= ImGuiWindowFlags.NoTitleBar;
+        if (Plugin.Config.VanillaStyle)
+        {
+            Flags |= ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBackground;
+            BgAlpha = 0f;
+        }
+        else
+        {
+            if (!Plugin.Config.ShowTitleBar)
+                Flags |= ImGuiWindowFlags.NoTitleBar;
 
-        if (LastViewport == ImGuiHelpers.MainViewport.Handle && !WasDocked)
-            BgAlpha = Plugin.Config.WindowAlpha / 100f;
+            if (LastViewport == ImGuiHelpers.MainViewport.Handle && !WasDocked)
+                BgAlpha = Plugin.Config.WindowAlpha / 100f;
+        }
 
         LastViewport = ImGui.GetWindowViewport().Handle;
         WasDocked = ImGui.IsWindowDocked();
@@ -306,7 +315,9 @@ public partial class ChatLog : Window, IChatWindow
         if (Plugin.Config.KeepInputFocus &&  InputHandler.Activate)
             ImGui.SetWindowFocus(WindowName);
 
-        if (Plugin.Config is { OverrideStyle: true, ChosenStyle: not null })
+        if (Plugin.Config.VanillaStyle)
+            ChatChrome.PushWindowStyle();
+        else if (Plugin.Config is { OverrideStyle: true, ChosenStyle: not null })
             StyleModel.GetConfiguredStyles()?.FirstOrDefault(style => style.Name == Plugin.Config.ChosenStyle)?.Push();
     }
 
@@ -319,7 +330,9 @@ public partial class ChatLog : Window, IChatWindow
         if (Plugin.CurrentTab.InputDisabled)
             InputHandler.Activate = false;
 
-        if (Plugin.Config is { OverrideStyle: true, ChosenStyle: not null })
+        if (Plugin.Config.VanillaStyle)
+            ChatChrome.PopWindowStyle();
+        else if (Plugin.Config is { OverrideStyle: true, ChosenStyle: not null })
             StyleModel.GetConfiguredStyles()?.FirstOrDefault(style => style.Name == Plugin.Config.ChosenStyle)?.Pop();
     }
 
@@ -332,6 +345,7 @@ public partial class ChatLog : Window, IChatWindow
     public override void Draw()
     {
         DrewThisFrame = true;
+        using var font = ChatChrome.PushContentFont();
         try
         {
             DrawChatLog();
@@ -364,11 +378,16 @@ public partial class ChatLog : Window, IChatWindow
         LastViewport = ImGui.GetWindowViewport().Handle;
         WasDocked = ImGui.IsWindowDocked();
 
+        if (ChatChrome.Enabled)
+            ChatChrome.DrawWindowBackground(VanillaGameLook.LogBackgroundAlpha());
+
         if (IsChatMode && Plugin.InputPreview.IsDrawable)
             Plugin.InputPreview.CalculatePreview();
 
         if (Plugin.Config.SidebarTabView)
             DrawTabSidebar();
+        else if (ChatChrome.Enabled)
+            DrawVanillaTabBar();
         else
             DrawTabBar();
 
@@ -380,6 +399,14 @@ public partial class ChatLog : Window, IChatWindow
 
         if (Plugin.Config.PreviewPosition is PreviewPosition.Inside && Plugin.InputPreview.IsDrawable)
             Plugin.InputPreview.DrawPreview();
+
+        if (ChatChrome.Enabled)
+        {
+            ChatChrome.DrawInputBar(
+                ImGui.GetCursorScreenPos(),
+                new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetFrameHeight()),
+                VanillaGameLook.LogInputAlpha());
+        }
 
         using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, Vector2.Zero))
             DrawChannelName(activeTab, true);
@@ -423,13 +450,16 @@ public partial class ChatLog : Window, IChatWindow
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows))
             InputHandler.LastActivityTime = InputHandler.FrameTime;
 
-        if (!showNovice)
-            return;
+        if (showNovice)
+        {
+            ImGui.SameLine();
 
-        ImGui.SameLine();
+            if (ImGuiUtil.IconButton(FontAwesomeIcon.Leaf))
+                GameFunctions.GameFunctions.ClickNoviceNetworkButton();
+        }
 
-        if (ImGuiUtil.IconButton(FontAwesomeIcon.Leaf))
-            GameFunctions.GameFunctions.ClickNoviceNetworkButton();
+        if (ChatChrome.Enabled && Plugin.Config.CanResize)
+            ChatChrome.DrawResizeGrip(ImGui.GetWindowPos(), ImGui.GetWindowSize());
     }
 
     public Dictionary<string, InputChannel> GetValidChannels()
@@ -605,6 +635,8 @@ public partial class ChatLog : Window, IChatWindow
             DrawLogTableStyle(tab, handler, switchedTab);
         else
             DrawLogNormalStyle(tab, handler, switchedTab);
+
+        ChatChrome.DrawScrollbar();
     }
 
     private void DrawLogNormalStyle(Tab tab, PayloadHandler handler, bool switchedTab)
@@ -768,6 +800,7 @@ public partial class ChatLog : Window, IChatWindow
                         if (!Plugin.Config.HideSameTimestamps || timestamp != lastTimestamp)
                         {
                             lastTimestamp = timestamp;
+                            VanillaText.DrawEdge(ImGui.GetCursorScreenPos(), timestamp);
                             ImGui.TextUnformatted(timestamp);
 
                             // We use an IsItemHovered() check here instead of
@@ -819,6 +852,130 @@ public partial class ChatLog : Window, IChatWindow
         {
             Plugin.Log.Warning(ex, "Error drawing chat log");
         }
+    }
+
+    private void DrawVanillaTabBar()
+    {
+        var scale = ImGuiHelpers.GlobalScale;
+        var tabH = ChatChrome.TabHeight;
+        var gap = 2f * scale;
+        var previousTab = Plugin.CurrentTab;
+
+        var visible = new List<int>();
+        for (var i = 0; i < Plugin.Config.Tabs.Count; i++)
+        {
+            if (!Plugin.Config.Tabs[i].PopOut)
+                visible.Add(i);
+        }
+
+        var selected = Plugin.LastTab;
+        if (Plugin.WantedTab is int wanted
+            && wanted >= 0
+            && wanted < Plugin.Config.Tabs.Count
+            && !Plugin.Config.Tabs[wanted].PopOut)
+            selected = wanted;
+
+        var labels = new string[visible.Count];
+        var widths = new float[visible.Count];
+        var padX = 16f * scale;
+        for (var n = 0; n < visible.Count; n++)
+        {
+            var tab = Plugin.Config.Tabs[visible[n]];
+            var unread = visible[n] == selected || tab.UnreadMode == UnreadMode.None || tab.Unread == 0 ? "" : $" ({tab.Unread})";
+            labels[n] = $"{tab.Name}{unread}";
+            widths[n] = Math.Clamp(ImGui.CalcTextSize(labels[n]).X + padX, 40f * scale, 180f * scale);
+        }
+
+        var avail = ImGui.GetContentRegionAvail().X;
+        var total = 0f;
+        foreach (var width in widths)
+            total += width;
+        if (visible.Count > 1)
+            total += gap * (visible.Count - 1);
+        if (total > avail && total > 1f)
+        {
+            var scaleDown = avail / total;
+            for (var n = 0; n < widths.Length; n++)
+                widths[n] *= scaleDown;
+            total = avail;
+        }
+
+        var origin = ImGui.GetCursorScreenPos();
+        if (visible.Count > 0)
+            ChatChrome.DrawTabCaps(origin, total, tabH);
+
+        var hovered = new bool[visible.Count];
+        var clicked = -1;
+        for (var n = 0; n < visible.Count; n++)
+        {
+            if (n > 0)
+                ImGui.SameLine(0f, gap);
+
+            var i = visible[n];
+            if (ImGui.InvisibleButton($"###log-tab-{i}", new Vector2(widths[n], tabH)))
+                clicked = i;
+
+            hovered[n] = ImGui.IsItemHovered();
+            DrawTabContextMenu(Plugin.Config.Tabs[i], i);
+        }
+
+        if (clicked >= 0)
+            selected = clicked;
+
+        var switched = false;
+        if (selected >= 0
+            && selected < Plugin.Config.Tabs.Count
+            && !Plugin.Config.Tabs[selected].PopOut
+            && selected != Plugin.LastTab)
+        {
+            TabSwitched(Plugin.Config.Tabs[selected], previousTab);
+            switched = true;
+            Plugin.LastTab = selected;
+        }
+        else if (selected >= 0 && selected < Plugin.Config.Tabs.Count && !Plugin.Config.Tabs[selected].PopOut)
+        {
+            Plugin.LastTab = selected;
+        }
+
+        var cursor = origin;
+        for (var n = 0; n < visible.Count; n++)
+        {
+            var size = new Vector2(widths[n], tabH);
+            if (visible[n] != Plugin.LastTab)
+                ChatChrome.DrawTab(cursor, size, false, hovered[n]);
+            cursor.X += widths[n] + gap;
+        }
+
+        cursor = origin;
+        for (var n = 0; n < visible.Count; n++)
+        {
+            var size = new Vector2(widths[n], tabH);
+            var active = visible[n] == Plugin.LastTab;
+            if (active)
+                ChatChrome.DrawTab(cursor, size, true, hovered[n]);
+
+            var textSize = ImGui.CalcTextSize(labels[n]);
+            var textPos = cursor + new Vector2((size.X - textSize.X) * 0.5f, (size.Y - textSize.Y) * 0.5f);
+            var color = active ? Vector4.One : new Vector4(0.78f, 0.78f, 0.78f, 1f);
+            if (Plugin.Config.Tabs[visible[n]].Unread > 0 && !active)
+                color = new Vector4(1f, 0.92f, 0.55f, 1f);
+            VanillaText.DrawAt(textPos, labels[n], color);
+            cursor.X += widths[n] + gap;
+        }
+
+        if (visible.Count > 0)
+            ImGui.SetCursorScreenPos(origin + new Vector2(0f, tabH + ImGui.GetStyle().ItemSpacing.Y));
+
+        if (Plugin.LastTab >= 0
+            && Plugin.LastTab < Plugin.Config.Tabs.Count
+            && !Plugin.Config.Tabs[Plugin.LastTab].PopOut)
+        {
+            var tab = Plugin.Config.Tabs[Plugin.LastTab];
+            tab.Unread = 0;
+            DrawMessageLog(tab, InputHandler.PayloadHandler, GetRemainingHeightForMessageLog(true), switched);
+        }
+
+        Plugin.WantedTab = null;
     }
 
     private void DrawTabBar()

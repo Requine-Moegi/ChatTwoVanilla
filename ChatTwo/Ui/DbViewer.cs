@@ -58,7 +58,7 @@ public class DbViewer : Window
 
     private bool NeedsScrollReset;
 
-    public DbViewer(Plugin plugin) : base("DBViewer###chat2-dbviewer")
+    public DbViewer(Plugin plugin) : base("DBViewer###chat2vanilla-dbviewer")
     {
         Plugin = plugin;
         SelectedChannels = TabsUtil.MostlyPlayer;
@@ -78,12 +78,12 @@ public class DbViewer : Window
         RespectCloseHotkey = false;
         DisableWindowSounds = true;
 
-        Plugin.Commands.Register("/chat2Viewer", "Get access to your message history, with simple filter options.", true).Execute += Toggle;
+        Plugin.Commands.Register(Plugin.ViewerCommand, "Get access to your message history, with simple filter options.", true).Execute += Toggle;
     }
 
     public void Dispose()
     {
-        Plugin.Commands.Register("/chat2Viewer", "Get access to your message history, with simple filter options.", true).Execute -= Toggle;
+        Plugin.Commands.Register(Plugin.ViewerCommand, "Get access to your message history, with simple filter options.", true).Execute -= Toggle;
     }
 
     private void Toggle(string _, string __) => Toggle();

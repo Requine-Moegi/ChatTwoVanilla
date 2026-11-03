@@ -3,6 +3,7 @@ using ChatTwo.Code;
 using ChatTwo.GameFunctions.Types;
 using ChatTwo.Resources;
 using ChatTwo.Ui.Handler;
+using ChatTwo.Ui.Style;
 using ChatTwo.Util;
 using Dalamud.Interface.Style;
 using Dalamud.Interface.Utility.Raii;
@@ -30,7 +31,7 @@ public class Popout : Window, IChatWindow
     public Vector2 LastWindowSize { get; set; } = Vector2.Zero;
     public HideState CurrentHideState { get; set; } = HideState.None;
 
-    public Popout(Plugin plugin, Tab tab, int idx) : base($"{tab.Name}##popout")
+    public Popout(Plugin plugin, Tab tab, int idx) : base($"{tab.Name}##chat2vanilla-popout")
     {
         Plugin = plugin;
         Tab = tab;
@@ -79,18 +80,26 @@ public class Popout : Window, IChatWindow
 
     public override void PreDraw()
     {
-        if (Plugin.Config is { OverrideStyle: true, ChosenStyle: not null })
-            StyleModel.GetConfiguredStyles()?.FirstOrDefault(style => style.Name == Plugin.Config.ChosenStyle)?.Push();
-
         Flags = ImGuiWindowFlags.None;
-        if (!Plugin.Config.ShowPopOutTitleBar)
-            Flags |= ImGuiWindowFlags.NoTitleBar;
-
         if (!Tab.CanMove)
             Flags |= ImGuiWindowFlags.NoMove;
 
         if (!Tab.CanResize)
             Flags |= ImGuiWindowFlags.NoResize;
+
+        if (Plugin.Config.VanillaStyle)
+        {
+            Flags |= ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBackground;
+            BgAlpha = 0f;
+            ChatChrome.PushWindowStyle();
+            return;
+        }
+
+        if (Plugin.Config is { OverrideStyle: true, ChosenStyle: not null })
+            StyleModel.GetConfiguredStyles()?.FirstOrDefault(style => style.Name == Plugin.Config.ChosenStyle)?.Push();
+
+        if (!Plugin.Config.ShowPopOutTitleBar)
+            Flags |= ImGuiWindowFlags.NoTitleBar;
 
         if (!Plugin.ChatLog.PopOutDocked[Idx])
         {
@@ -101,6 +110,7 @@ public class Popout : Window, IChatWindow
 
     public override void Draw()
     {
+        using var font = ChatChrome.PushContentFont();
         using var id = ImRaii.PushId($"popout-{Tab.Identifier}");
 
         LastWindowSize = ImGui.GetWindowSize();
@@ -109,7 +119,20 @@ public class Popout : Window, IChatWindow
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows))
             LastActivityTime = FrameTime;
 
-        if (!Plugin.Config.ShowPopOutTitleBar)
+        var chromeAlpha = Tab.IndependentOpacity ? Tab.Opacity / 100f : VanillaGameLook.LogBackgroundAlpha();
+        if (ChatChrome.Enabled)
+        {
+            ChatChrome.DrawWindowBackground(chromeAlpha);
+
+            var tabH = ChatChrome.TabHeight;
+            var width = ImGui.GetContentRegionAvail().X;
+            var pos = ImGui.GetCursorScreenPos();
+            ChatChrome.DrawTab(pos, new Vector2(width, tabH), true, false);
+            var textSize = ImGui.CalcTextSize(Tab.Name);
+            VanillaText.DrawAt(pos + (new Vector2(width, tabH) - textSize) * 0.5f, Tab.Name, Vector4.One);
+            ImGui.Dummy(new Vector2(width, tabH));
+        }
+        else if (!Plugin.Config.ShowPopOutTitleBar)
         {
             ImGui.TextUnformatted(Tab.Name);
             ImGui.Separator();
@@ -122,11 +145,24 @@ public class Popout : Window, IChatWindow
         Plugin.ChatLog.DrawMessageLog(Tab, InputHandler.PayloadHandler, remainingHeight, false);
 
         if (!Tab.SupportsInput)
+        {
+            if (ChatChrome.Enabled && Tab.CanResize)
+                ChatChrome.DrawResizeGrip(ImGui.GetWindowPos(), ImGui.GetWindowSize());
             return;
+        }
 
         // This tab has a fixed channel, so we force this channel to be always set as current
         if (Tab.Channel is not null)
             Tab.CurrentChannel.SetChannel(Tab.Channel.Value);
+
+        if (ChatChrome.Enabled)
+        {
+            var inputAlpha = Tab.IndependentOpacity ? chromeAlpha : VanillaGameLook.LogInputAlpha();
+            ChatChrome.DrawInputBar(
+                ImGui.GetCursorScreenPos(),
+                new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetFrameHeight()),
+                inputAlpha);
+        }
 
         using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, Vector2.Zero))
             Plugin.ChatLog.DrawChannelName(Tab);
@@ -151,13 +187,18 @@ public class Popout : Window, IChatWindow
 
         var tellSpecial = false;
         InputHandler.DrawInputArea(Tab, ImGui.GetContentRegionAvail().X, ref tellSpecial);
+
+        if (ChatChrome.Enabled && Tab.CanResize)
+            ChatChrome.DrawResizeGrip(ImGui.GetWindowPos(), ImGui.GetWindowSize());
     }
 
     public override void PostDraw()
     {
         Plugin.ChatLog.PopOutDocked[Idx] = ImGui.IsWindowDocked();
 
-        if (Plugin.Config is { OverrideStyle: true, ChosenStyle: not null })
+        if (Plugin.Config.VanillaStyle)
+            ChatChrome.PopWindowStyle();
+        else if (Plugin.Config is { OverrideStyle: true, ChosenStyle: not null })
             StyleModel.GetConfiguredStyles()?.FirstOrDefault(style => style.Name == Plugin.Config.ChosenStyle)?.Pop();
     }
 

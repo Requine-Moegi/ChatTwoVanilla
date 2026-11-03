@@ -1484,4 +1484,13 @@ Your old database can still be recovered, please contact the plugin author for h
     <data name="Options_DatabaseGatherCraftMessages_Description" xml:space="preserve">
         <value>If gathering and crafting messages are saved to the database, the size of the database will grow much faster, and there will be a noticeable freeze when saving settings. It is recommended to leave this disabled.</value>
     </data>
+    <data name="Options_VanillaStyle_Name" xml:space="preserve">
+        <value>Vanilla style</value>
+    </data>
+    <data name="Options_VanillaStyle_Description" xml:space="preserve">
+        <value>Draw the chat log with the game's chat window textures, Axis font, channel colours, and log transparency. Turn this off to use the original Chat 2 look. Channel colours set in the Colours tab still override the game. Dalamud style override is not applied while this is on.</value>
+    </data>
+    <data name="Options_VanillaStyle_OverrideIgnored" xml:space="preserve">
+        <value>While vanilla style is on, the Dalamud style override is not applied to the chat log or its popouts.</value>
+    </data>
 </root>

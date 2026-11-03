@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using ChatTwo.Code;
+using ChatTwo.Ui.Style;
 using ChatTwo.Util;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
@@ -104,16 +105,16 @@ public class ChunkHandler
         if (color == null && text.FallbackColor != null)
         {
             var type = text.FallbackColor.Value;
-            color = Plugin.Config.ChatColours.TryGetValue(type, out var col)
-                ? ColourUtil.RgbaToVector4(col)
-                : ColourUtil.RgbaToVector4(type.DefaultColor());
+            color = VanillaGameLook.ResolveChannelColor(type);
         }
 
         using var pushedColor = ImRaii.PushColor(ImGuiCol.Text, color);
 
-        var disposableFont = Plugin.Config.FontsEnabled && Plugin.FontManager.ItalicFont != null
-            ? Plugin.FontManager.ItalicFont
-            : Plugin.FontManager.AxisItalic;
+        var disposableFont = text.Italic && Plugin.Config.VanillaStyle
+            ? Plugin.FontManager.VanillaAxisItalic
+            : Plugin.Config.FontsEnabled && Plugin.FontManager.ItalicFont != null
+                ? Plugin.FontManager.ItalicFont
+                : Plugin.FontManager.AxisItalic;
         if (text.Italic)
             disposableFont.Push();
 
@@ -140,6 +141,7 @@ public class ChunkHandler
         }
         else
         {
+            VanillaText.DrawEdge(ImGui.GetCursorScreenPos(), content);
             ImGui.TextUnformatted(content);
             ImGuiUtil.PostPayload(chunk, handler);
         }
