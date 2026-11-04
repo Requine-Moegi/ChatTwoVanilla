@@ -1,0 +1,123 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Download Dalamud
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dest = Join-Path $env:RUNNER_TEMP 'dalamud'
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          $zip = Join-Path $env:RUNNER_TEMP 'dalamud-distrib.zip'
+          Invoke-WebRequest -Uri 'https://goatcorp.github.io/dalamud-distrib/latest.zip' -OutFile $zip
+          Expand-Archive -Force $zip $dest
+          $dll = Join-Path $dest 'Dalamud.dll'
+          if (-not (Test-Path $dll)) {
+            $found = Get-ChildItem $dest -Recurse -Filter Dalamud.dll | Select-Object -First 1
+            if (-not $found) { throw 'Dalamud.dll was not in the distribution zip.' }
+            $dest = $found.DirectoryName
+          }
+          "DALAMUD_HOME=$dest" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Set version from the tag
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = '${{ github.ref_name }}'
+          if ($tag -notmatch '^v(\d+\.\d+\.\d+)(\.\d+)?$') {
+            throw "Tag '$tag' must look like v1.2.3"
+          }
+          $version = $Matches[1]
+          $assembly = if ($Matches[2]) { "$version$($Matches[2])" } else { "$version.0" }
+          $csproj = 'ChatTwo/ChatTwo.csproj'
+          $text = Get-Content $csproj -Raw
+          $text = [regex]::Replace($text, '<Version>.*?</Version>', "<Version>$version</Version>", 1)
+          $text = [regex]::Replace($text, '<AssemblyVersion>.*?</AssemblyVersion>', "<AssemblyVersion>$assembly</AssemblyVersion>", 1)
+          $text = [regex]::Replace($text, '<FileVersion>.*?</FileVersion>', "<FileVersion>$assembly</FileVersion>", 1)
+          Set-Content -Path $csproj -Value $text -NoNewline
+          "ASSEMBLY_VERSION=$assembly" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build
+        run: dotnet build ChatTwo/ChatTwo.csproj -c Release --nologo
+
+      - name: Pack Windows latest.zip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $src = 'ChatTwo/bin/Release'
+          $stage = Join-Path $env:RUNNER_TEMP 'chattwo-win'
+          if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
+          New-Item -ItemType Directory -Path $stage | Out-Null
+          Get-ChildItem $src -File -Filter *.dll | Copy-Item -Destination $stage
+          Copy-Item "$src/ChatTwoVanilla.json","$src/ChatTwoVanilla.deps.json","$src/SharedEmoteList.json" -Destination $stage
+          foreach ($loc in @('ca','de','es','fr','it','ja','ko','nl','pt-BR','ro','ru','sv','zh-Hans','zh-Hant')) {
+            Copy-Item "$src/$loc" -Destination $stage -Recurse
+          }
+          Copy-Item "$src/Frontend" -Destination $stage -Recurse
+          New-Item -ItemType Directory -Path "$stage/runtimes" | Out-Null
+          Copy-Item "$src/runtimes/win-x64" -Destination "$stage/runtimes" -Recurse
+          foreach ($forbidden in @('ChatTwo.json','latest.zip')) {
+            if (Test-Path (Join-Path $stage $forbidden)) { throw "Refusing to pack $forbidden" }
+          }
+          foreach ($dir in @('ChatTwo','ChatTwoVanilla')) {
+            if (Test-Path (Join-Path $stage $dir)) { throw "Refusing to pack $dir/" }
+          }
+          $extra = Get-ChildItem "$stage/runtimes" -Directory | Where-Object { $_.Name -ne 'win-x64' }
+          if ($extra) { throw "Refusing extra runtimes: $($extra.Name -join ', ')" }
+          foreach ($req in @(
+            'ChatTwoVanilla.dll','ChatTwoVanilla.json','ChatTwoVanilla.deps.json',
+            'SharedEmoteList.json','Frontend/index.html','runtimes/win-x64/native/e_sqlite3.dll')) {
+            if (-not (Test-Path (Join-Path $stage $req))) { throw "Missing $req" }
+          }
+          $zip = Join-Path $env:GITHUB_WORKSPACE 'latest.zip'
+          if (Test-Path $zip) { Remove-Item $zip }
+          # The packager's own latest.zip also contains every SQLite runtime and a stale
+          # ChatTwo.json. Publish the Windows package instead, still named latest.zip.
+          tar -a -cf $zip -C $stage .
+
+      - name: Publish GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = '${{ github.ref_name }}'
+          gh release create $tag latest.zip --title $tag --notes "Chat 2 Vanilla $tag"
+
+      - name: Update repo.json and push to main
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repo = Get-Content repo.json -Raw | ConvertFrom-Json
+          $repo[0].AssemblyVersion = $env:ASSEMBLY_VERSION
+          $repo[0].LastUpdate = [int64][double]::Parse((Get-Date -UFormat %s))
+          # ConvertTo-Json drops the array when it has one entry. The plugin master must stay an array.
+          $body = ConvertTo-Json -InputObject $repo[0] -Depth 6
+          $utf8 = New-Object System.Text.UTF8Encoding $false
+          [System.IO.File]::WriteAllText((Join-Path (Get-Location) 'repo.json'), "[$body]`n", $utf8)
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ChatTwo/ChatTwo.csproj repo.json
+          git commit -m "Release ${{ github.ref_name }}"
+          git push origin HEAD:main

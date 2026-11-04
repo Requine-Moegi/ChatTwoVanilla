@@ -5,6 +5,7 @@
 
 # Packaging
 pack/
+/latest.zip
 
 # User-specific files
 *.rsuser
