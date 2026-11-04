@@ -445,42 +445,34 @@ public static class ChatChrome
             ImGui.GetColorU32(new Vector4(0.95f, 0.9f, 0.75f, 1f)));
     }
 
-    public static void DrawTabCaps(VanillaRect strip)
-    {
-        DrawTabEnds(strip);
-    }
-
     /// <summary>
-    /// Part 7 is a square bar. Part 6 is the rounded left end and part 15 (flipped) is the right end.
-    /// Each tab gets both, so the pills stay separate instead of one continuous strip.
+    /// One rounded cap at each end of the whole strip. The right cap is the v6 placement:
+    /// flipped part 15, 28px, starting at the strip's right edge. The left cap is that
+    /// same sprite mirrored, hanging off the strip's left edge.
     /// </summary>
-    public static void DrawTabEnds(VanillaRect tab)
+    public static void DrawTabCaps(VanillaRect strip)
     {
         Catalog.EnsureLoaded();
         var scale = ImGuiHelpers.GlobalScale;
         var size = new Vector2(28f * scale, 28f * scale);
         var drawList = ImGui.GetWindowDrawList();
-        // The curve in part 6 starts 8px into the sprite. Sit that curve on the tab's left edge.
-        var left = new Vector2(tab.X - 8f * scale, tab.Y);
-        // Flipped part 15 keeps its curve on the right and a few transparent pixels past it.
-        var right = new Vector2(tab.X + tab.W - 22f * scale, tab.Y);
-        Drawer.Draw(drawList, Catalog.TabBarStart, left, left + size, 1f);
+        var right = new Vector2(strip.X + strip.W, strip.Y);
+        var left = new Vector2(strip.X - size.X, strip.Y);
+        drawList.PushClipRect(left - new Vector2(2f, 2f), right + size + new Vector2(2f, 2f), false);
+        Drawer.Draw(drawList, Catalog.TabBarEnd, left, left + size, 1f, flipH: false);
         Drawer.Draw(drawList, Catalog.TabBarEnd, right, right + size, 1f);
+        drawList.PopClipRect();
     }
 
     /// <summary>
     /// Hit target on a strip end cap. The glyph is drawn only when that side has hidden tabs.
     /// </summary>
-    public static bool TabCapArrow(string id, VanillaRect tab, bool left)
+    public static bool TabCapArrow(string id, Vector2 pos, float size, bool left)
     {
-        var scale = ImGuiHelpers.GlobalScale;
-        var width = 16f * scale;
-        var pos = left
-            ? new Vector2(tab.X - 2f * scale, tab.Y)
-            : new Vector2(tab.X + tab.W - width + 2f * scale, tab.Y);
         ImGui.SetCursorScreenPos(pos);
-        var clicked = ImGui.InvisibleButton(id, new Vector2(width, tab.H));
-        DrawGlyph(new Vector2(pos.X, tab.Y + (tab.H - width) * 0.5f), width, left ? VanillaGlyph.Left : VanillaGlyph.Right, 0.95f);
+        var clicked = ImGui.InvisibleButton(id, new Vector2(size, size));
+        var glyph = Math.Min(size, 16f * ImGuiHelpers.GlobalScale);
+        DrawGlyph(new Vector2(pos.X + (size - glyph) * 0.5f, pos.Y + (size - glyph) * 0.5f), glyph, left ? VanillaGlyph.Left : VanillaGlyph.Right, 0.95f);
         return clicked;
     }
 

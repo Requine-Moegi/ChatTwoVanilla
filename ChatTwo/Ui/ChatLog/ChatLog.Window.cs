@@ -1015,8 +1015,8 @@ public partial class ChatLog : Window, IChatWindow
     private void DrawVanillaTabStrip(VanillaFrame frame, bool switched)
     {
         var scale = frame.Scale;
-        // Part 6 hangs 8px off the left of each pill. The gap is that wide, so the caps do not touch.
-        var gap = 8f * scale;
+        // Vanilla tabs sit flush. The rounded ends belong to the strip, not to each pill.
+        var gap = 0f;
         var strip = frame.TabStrip;
 
         var visible = new List<int>();
@@ -1039,10 +1039,9 @@ public partial class ChatLog : Window, IChatWindow
                 widths[n] = Math.Max(ImGui.CalcTextSize(labels[n]).X + padX, 28f * scale);
             }
 
-            // The row runs from the left margin up to the plus button, which stays on the right edge.
+            // The row fills the strip. The right cap stays at the strip's right edge, just before the buttons.
             var runLeft = strip.X;
-            var runRight = frame.Plus.X - 2f * scale;
-            var budget = Math.Max(28f * scale, runRight - runLeft);
+            var budget = Math.Max(28f * scale, strip.W);
 
             if (_vanillaTabFirst >= visible.Count)
                 _vanillaTabFirst = Math.Max(0, visible.Count - 1);
@@ -1093,8 +1092,8 @@ public partial class ChatLog : Window, IChatWindow
                 used += widths[n];
             }
 
-            // Leftover space goes into the pills, so the last cap meets the plus button
-            // instead of leaving a blank segment. Tabs are never cut in half.
+            // Leftover space goes into the pills so they meet the right cap.
+            // Tabs are never cut in half.
             var slack = budget - used;
             if (shown > 0 && slack > 0.5f)
             {
@@ -1104,19 +1103,14 @@ public partial class ChatLog : Window, IChatWindow
             }
 
             var drawList = ImGui.GetWindowDrawList();
-            drawList.PushClipRect(new Vector2(runLeft - 12f * scale, strip.Y - 8f * scale), new Vector2(runRight + 10f * scale, strip.Y + strip.H), true);
+            drawList.PushClipRect(new Vector2(runLeft, strip.Y - 8f * scale), new Vector2(runLeft + budget, strip.Y + strip.H), true);
             var x = runLeft;
             var clickedTab = -1;
-            VanillaRect firstRect = default;
-            VanillaRect lastRect = default;
             var drewTab = false;
             for (var n = _vanillaTabFirst; n < end; n++)
             {
                 var tabIndex = visible[n];
                 var rect = new VanillaRect(x, strip.Y, widths[n], strip.H);
-                if (!drewTab)
-                    firstRect = rect;
-                lastRect = rect;
                 drewTab = true;
 
                 ImGui.SetCursorScreenPos(rect.Min);
@@ -1129,12 +1123,11 @@ public partial class ChatLog : Window, IChatWindow
                 var entry = Plugin.Config.Tabs[tabIndex];
                 var unread = !active && entry.Unread > 0 && entry.UnreadMode != UnreadMode.None;
                 ChatChrome.DrawTabFace(rect, hovered);
-                ChatChrome.DrawTabEnds(rect);
 
                 var textSize = ImGui.CalcTextSize(labels[n]);
                 var textPos = rect.Min + new Vector2((rect.W - textSize.X) * 0.5f, (rect.H - textSize.Y) * 0.5f);
                 var color = active ? Vector4.One : new Vector4(0.86f, 0.86f, 0.86f, 1f);
-                var clipPad = 10f * scale;
+                var clipPad = 8f * scale;
                 drawList.PushClipRect(rect.Min + new Vector2(clipPad, 0f), rect.Max - new Vector2(clipPad, 0f), true);
                 VanillaText.DrawAt(textPos, labels[n], color);
                 drawList.PopClipRect();
@@ -1143,13 +1136,19 @@ public partial class ChatLog : Window, IChatWindow
                 x += widths[n] + gap;
             }
 
-            var scrollDelta = 0;
-            if (drewTab && canLeft && ChatChrome.TabCapArrow("###vanilla-tab-left", firstRect, true))
-                scrollDelta--;
-            if (drewTab && canRight && ChatChrome.TabCapArrow("###vanilla-tab-right", lastRect, false))
-                scrollDelta++;
-
             drawList.PopClipRect();
+
+            var scrollDelta = 0;
+            if (drewTab)
+            {
+                var run = new VanillaRect(runLeft, strip.Y, Math.Max(1f, x - runLeft), strip.H);
+                ChatChrome.DrawTabCaps(run);
+                var cap = 28f * scale;
+                if (canLeft && ChatChrome.TabCapArrow("###vanilla-tab-left", new Vector2(run.X - cap, run.Y), cap, true))
+                    scrollDelta--;
+                if (canRight && ChatChrome.TabCapArrow("###vanilla-tab-right", new Vector2(run.X + run.W, run.Y), cap, false))
+                    scrollDelta++;
+            }
 
             if (scrollDelta != 0)
                 clickedTab = -1;

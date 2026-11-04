@@ -212,11 +212,11 @@ public class Popout : Window, IChatWindow
 
     private void DrawVanillaPopoutStrip(VanillaFrame frame)
     {
-        var right = frame.Gear.X;
+        var right = frame.Gear.X - 21f * frame.Scale;
         var strip = new VanillaRect(frame.TabStrip.X, frame.TabStrip.Y, Math.Max(36f * frame.Scale, right - frame.TabStrip.X), frame.TabStrip.H);
         var tab = strip;
         ChatChrome.DrawTabFace(tab, false);
-        ChatChrome.DrawTabEnds(tab);
+        ChatChrome.DrawTabCaps(tab);
         using (Plugin.FontManager.PushFixedAxis(12f))
         {
             var textSize = ImGui.CalcTextSize(Tab.Name);

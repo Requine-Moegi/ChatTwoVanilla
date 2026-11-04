@@ -15,7 +15,7 @@ public sealed class VanillaDrawer
 
     public void InvalidatePaths() => _paths.Clear();
 
-    public bool Draw(ImDrawListPtr drawList, VanillaPart? part, Vector2 min, Vector2 max, float alpha, Vector4? extraTint = null)
+    public bool Draw(ImDrawListPtr drawList, VanillaPart? part, Vector2 min, Vector2 max, float alpha, Vector4? extraTint = null, bool? flipH = null)
     {
         if (part == null || max.X - min.X < 1f || max.Y - min.Y < 1f)
             return false;
@@ -29,7 +29,7 @@ public sealed class VanillaDrawer
             tint *= extraTint.Value;
 
         var color = ImGui.GetColorU32(tint);
-        DrawPart(drawList, wrap, highResolution, part, min, max, color);
+        DrawPart(drawList, wrap, highResolution, part, min, max, color, flipH ?? part.FlipH);
         return true;
     }
 
@@ -70,7 +70,7 @@ public sealed class VanillaDrawer
         return true;
     }
 
-    private static void DrawPart(ImDrawListPtr drawList, IDalamudTextureWrap tex, bool highResolution, VanillaPart part, Vector2 min, Vector2 max, uint color)
+    private static void DrawPart(ImDrawListPtr drawList, IDalamudTextureWrap tex, bool highResolution, VanillaPart part, Vector2 min, Vector2 max, uint color, bool flipH)
     {
         var uvScale = 1f;
         if (highResolution)
@@ -89,7 +89,7 @@ public sealed class VanillaDrawer
         {
             float u0 = part.U;
             float u1 = part.U + part.W;
-            if (part.FlipH)
+            if (flipH)
                 (u0, u1) = (u1, u0);
             drawList.AddImage(tex.Handle, min, max, Uv(u0, part.V), Uv(u1, part.V + part.H), color);
             return;
