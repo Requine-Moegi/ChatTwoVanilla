@@ -6,7 +6,7 @@ Chat 2 Vanilla keeps Chat 2's tabs, filters, input, autocomplete, links, and emo
 
 The assembly name is `ChatTwoVanilla`, so it can be installed next to Chat 2. Commands are `/chat2vanilla` and `/clearlog2vanilla`. IPC channels are `ChatTwoVanilla.*`. Details of the reskin are in [VANILLA_STYLE.md](VANILLA_STYLE.md).
 
-Source: <https://github.com/Dillard-Coffey/ChatTwoVanilla>
+Source: <https://github.com/Requine-Moegi/ChatTwoVanilla>
 
 ## Install
 
