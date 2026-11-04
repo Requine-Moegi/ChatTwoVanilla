@@ -50,6 +50,7 @@ public partial class ChatLog : Window, IChatWindow
 
     /// <summary>First visible index in the bottom tab strip when there are more tabs than fit.</summary>
     private int _vanillaTabFirst;
+    private float _vanillaTabBudget = -1f;
 
     public ChatLog(Plugin plugin) : base($"{Plugin.PluginName}###chat2vanilla")
     {
@@ -276,7 +277,8 @@ public partial class ChatLog : Window, IChatWindow
 
         if (Plugin.Config.VanillaStyle)
         {
-            Flags |= ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBackground;
+            // The top-right game grip is the resize handle. ImGui's corner grip and border resize stay off.
+            Flags |= ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoResize;
             BgAlpha = 0f;
         }
         else
@@ -851,15 +853,23 @@ public partial class ChatLog : Window, IChatWindow
     private void DrawVanillaBody()
     {
         var frame = ChatChrome.Frame();
+        var previewWrap = Math.Max(40f, frame.Messages.W);
         if (Plugin.Config.PreviewPosition is PreviewPosition.Inside && Plugin.InputPreview.IsDrawable)
-            Plugin.InputPreview.CalculatePreview();
+            Plugin.InputPreview.CalculatePreview(previewWrap);
 
-        var previewH = Plugin.Config.PreviewPosition is PreviewPosition.Inside && Plugin.InputPreview.IsDrawable
-            ? Plugin.InputPreview.PreviewHeight
-            : 0f;
+        var previewH = 0f;
+        if (Plugin.Config.PreviewPosition is PreviewPosition.Inside && Plugin.InputPreview.IsDrawable)
+        {
+            var room = frame.Label.Y - frame.Messages.Y - 28f * frame.Scale;
+            previewH = Math.Clamp(Plugin.InputPreview.PreviewHeight, 0f, Math.Max(0f, room));
+        }
+
         var messages = frame.Messages;
         if (previewH > 0f)
-            messages = messages with { H = Math.Max(frame.Scale * 20f, messages.H - previewH) };
+        {
+            var previewTop = frame.Label.Y - 4f * frame.Scale - previewH;
+            messages = messages with { H = Math.Max(frame.Scale * 20f, previewTop - 4f * frame.Scale - messages.Y) };
+        }
 
         ChatChrome.BeginScrollDrag(frame.Scroll);
         ChatChrome.DrawLogBackground(frame);
@@ -882,8 +892,18 @@ public partial class ChatLog : Window, IChatWindow
 
         if (previewH > 0f)
         {
-            ImGui.SetCursorScreenPos(new Vector2(messages.X, messages.Y + messages.H));
-            Plugin.InputPreview.DrawPreview();
+            var origin = new Vector2(frame.Messages.X, frame.Label.Y - 4f * frame.Scale - previewH);
+            var previewSize = new Vector2(previewWrap, previewH);
+            ImGui.SetCursorScreenPos(origin);
+            var previewList = ImGui.GetWindowDrawList();
+            previewList.PushClipRect(origin, origin + previewSize, true);
+            using (var previewChild = ImRaii.Child("##vanilla-preview", previewSize, false, ImGuiWindowFlags.NoScrollbar))
+            {
+                if (previewChild)
+                    Plugin.InputPreview.DrawPreview();
+            }
+
+            previewList.PopClipRect();
         }
 
         var activeTab = Plugin.CurrentTab;
@@ -995,7 +1015,8 @@ public partial class ChatLog : Window, IChatWindow
     private void DrawVanillaTabStrip(VanillaFrame frame, bool switched)
     {
         var scale = frame.Scale;
-        var gap = 2f * scale;
+        // Part 6 hangs 8px off the left of each pill. The gap is that wide, so the caps do not touch.
+        var gap = 8f * scale;
         var strip = frame.TabStrip;
 
         var visible = new List<int>();
@@ -1018,24 +1039,11 @@ public partial class ChatLog : Window, IChatWindow
                 widths[n] = Math.Max(ImGui.CalcTextSize(labels[n]).X + padX, 28f * scale);
             }
 
-            var total = 0f;
-            for (var n = 0; n < widths.Length; n++)
-                total += widths[n];
-            if (widths.Length > 1)
-                total += gap * (widths.Length - 1);
+            // The row runs from the left margin up to the plus button, which stays on the right edge.
+            var runLeft = strip.X;
+            var runRight = frame.Plus.X - 2f * scale;
+            var budget = Math.Max(28f * scale, runRight - runLeft);
 
-            var overflow = visible.Count > 0 && total > strip.W + 0.5f;
-            var arrow = 16f * scale;
-            var tabsX = strip.X;
-            var tabsBudget = strip.W;
-            if (overflow)
-            {
-                tabsX += arrow;
-                tabsBudget = Math.Max(arrow, strip.W - arrow * 2f);
-            }
-
-            if (!overflow)
-                _vanillaTabFirst = 0;
             if (_vanillaTabFirst >= visible.Count)
                 _vanillaTabFirst = Math.Max(0, visible.Count - 1);
 
@@ -1048,16 +1056,20 @@ public partial class ChatLog : Window, IChatWindow
                 break;
             }
 
-            if (switched && selectedLocal >= 0)
-                RevealVanillaTab(selectedLocal, widths, gap, tabsBudget);
-            if (overflow)
-                PullVanillaTabsBack(widths, gap, tabsBudget);
+            var budgetChanged = Math.Abs(_vanillaTabBudget - budget) > 0.5f;
+            _vanillaTabBudget = budget;
+            if (selectedLocal >= 0 && (switched || budgetChanged))
+                RevealVanillaTab(selectedLocal, widths, gap, budget);
+            PullVanillaTabsBack(widths, gap, budget);
 
-            var end = VisibleTabEnd(_vanillaTabFirst, widths, gap, tabsBudget);
+            var end = VisibleTabEnd(_vanillaTabFirst, widths, gap, budget);
+            if (visible.Count > 0 && end <= _vanillaTabFirst)
+                end = Math.Min(visible.Count, _vanillaTabFirst + 1);
+
             var canLeft = _vanillaTabFirst > 0;
             var canRight = end < visible.Count;
-            var rowMax = strip.Min + strip.Size;
-            if (visible.Count > 0 && ImGui.IsMouseHoveringRect(strip.Min, rowMax))
+            var rowMax = new Vector2(frame.Close.X + frame.Close.W, strip.Y + strip.H);
+            if (visible.Count > 0 && ImGui.IsMouseHoveringRect(new Vector2(runLeft, strip.Y), rowMax))
             {
                 var wheel = ImGui.GetIO().MouseWheel;
                 if (wheel > 0f && canLeft)
@@ -1066,23 +1078,47 @@ public partial class ChatLog : Window, IChatWindow
                     _vanillaTabFirst++;
                 if (wheel != 0f)
                 {
-                    end = VisibleTabEnd(_vanillaTabFirst, widths, gap, tabsBudget);
+                    end = VisibleTabEnd(_vanillaTabFirst, widths, gap, budget);
                     canLeft = _vanillaTabFirst > 0;
                     canRight = end < visible.Count;
                 }
             }
 
-            ChatChrome.DrawTabCaps(strip);
+            var shown = Math.Max(0, end - _vanillaTabFirst);
+            var used = 0f;
+            for (var n = _vanillaTabFirst; n < end; n++)
+            {
+                if (n > _vanillaTabFirst)
+                    used += gap;
+                used += widths[n];
+            }
+
+            // Leftover space goes into the pills, so the last cap meets the plus button
+            // instead of leaving a blank segment. Tabs are never cut in half.
+            var slack = budget - used;
+            if (shown > 0 && slack > 0.5f)
+            {
+                var add = slack / shown;
+                for (var n = _vanillaTabFirst; n < end; n++)
+                    widths[n] += add;
+            }
 
             var drawList = ImGui.GetWindowDrawList();
-            // The active diamond sits 4px above the pill, so the clip has to include that.
-            drawList.PushClipRect(new Vector2(tabsX, strip.Y - 8f * scale), new Vector2(tabsX + tabsBudget, strip.Y + strip.H), true);
-            var x = tabsX;
+            drawList.PushClipRect(new Vector2(runLeft - 12f * scale, strip.Y - 8f * scale), new Vector2(runRight + 10f * scale, strip.Y + strip.H), true);
+            var x = runLeft;
             var clickedTab = -1;
+            VanillaRect firstRect = default;
+            VanillaRect lastRect = default;
+            var drewTab = false;
             for (var n = _vanillaTabFirst; n < end; n++)
             {
                 var tabIndex = visible[n];
                 var rect = new VanillaRect(x, strip.Y, widths[n], strip.H);
+                if (!drewTab)
+                    firstRect = rect;
+                lastRect = rect;
+                drewTab = true;
+
                 ImGui.SetCursorScreenPos(rect.Min);
                 if (ImGui.InvisibleButton($"###log-tab-{tabIndex}", rect.Size))
                     clickedTab = tabIndex;
@@ -1093,21 +1129,30 @@ public partial class ChatLog : Window, IChatWindow
                 var entry = Plugin.Config.Tabs[tabIndex];
                 var unread = !active && entry.Unread > 0 && entry.UnreadMode != UnreadMode.None;
                 ChatChrome.DrawTabFace(rect, hovered);
+                ChatChrome.DrawTabEnds(rect);
 
                 var textSize = ImGui.CalcTextSize(labels[n]);
                 var textPos = rect.Min + new Vector2((rect.W - textSize.X) * 0.5f, (rect.H - textSize.Y) * 0.5f);
                 var color = active ? Vector4.One : new Vector4(0.86f, 0.86f, 0.86f, 1f);
-                var clipPad = 8f * scale;
+                var clipPad = 10f * scale;
                 drawList.PushClipRect(rect.Min + new Vector2(clipPad, 0f), rect.Max - new Vector2(clipPad, 0f), true);
                 VanillaText.DrawAt(textPos, labels[n], color);
                 drawList.PopClipRect();
-                // Component 1011 links the marker in front of the text.
                 if (active || unread)
                     ChatChrome.DrawTabMarker(rect);
                 x += widths[n] + gap;
             }
 
+            var scrollDelta = 0;
+            if (drewTab && canLeft && ChatChrome.TabCapArrow("###vanilla-tab-left", firstRect, true))
+                scrollDelta--;
+            if (drewTab && canRight && ChatChrome.TabCapArrow("###vanilla-tab-right", lastRect, false))
+                scrollDelta++;
+
             drawList.PopClipRect();
+
+            if (scrollDelta != 0)
+                clickedTab = -1;
 
             if (clickedTab >= 0 && clickedTab != Plugin.LastTab)
             {
@@ -1115,16 +1160,6 @@ public partial class ChatLog : Window, IChatWindow
                 TabSwitched(Plugin.Config.Tabs[clickedTab], previous);
                 Plugin.LastTab = clickedTab;
                 Plugin.Config.Tabs[clickedTab].Unread = 0;
-            }
-
-            var scrollDelta = 0;
-            if (overflow)
-            {
-                var arrowY = strip.Y + (strip.H - arrow) * 0.5f;
-                if (ChatChrome.ArrowButton("###vanilla-tab-left", ChatChrome.VanillaGlyph.Left, new Vector2(strip.X, arrowY), arrow, canLeft))
-                    scrollDelta--;
-                if (ChatChrome.ArrowButton("###vanilla-tab-right", ChatChrome.VanillaGlyph.Right, new Vector2(strip.X + strip.W - arrow, arrowY), arrow, canRight))
-                    scrollDelta++;
             }
 
             if (scrollDelta != 0 && visible.Count > 0)

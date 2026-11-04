@@ -90,7 +90,7 @@ public class Popout : Window, IChatWindow
 
         if (Plugin.Config.VanillaStyle)
         {
-            Flags |= ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBackground;
+            Flags |= ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoResize;
             BgAlpha = 0f;
             ChatChrome.PushWindowStyle();
             return;
@@ -212,11 +212,11 @@ public class Popout : Window, IChatWindow
 
     private void DrawVanillaPopoutStrip(VanillaFrame frame)
     {
-        var right = frame.Gear.X - 21f * frame.Scale;
+        var right = frame.Gear.X;
         var strip = new VanillaRect(frame.TabStrip.X, frame.TabStrip.Y, Math.Max(36f * frame.Scale, right - frame.TabStrip.X), frame.TabStrip.H);
         var tab = strip;
-        ChatChrome.DrawTabCaps(tab);
         ChatChrome.DrawTabFace(tab, false);
+        ChatChrome.DrawTabEnds(tab);
         using (Plugin.FontManager.PushFixedAxis(12f))
         {
             var textSize = ImGui.CalcTextSize(Tab.Name);

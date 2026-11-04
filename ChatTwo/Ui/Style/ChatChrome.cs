@@ -375,7 +375,6 @@ public static class ChatChrome
     private static float _scrollMax;
     private static float _scrollView = 1f;
     private static float? _scrollDragFraction;
-    private static bool _scrollDragging;
 
     public static VanillaFrame Frame()
         => VanillaFrame.From(ImGui.GetWindowPos(), ImGui.GetWindowSize(), ImGuiHelpers.GlobalScale);
@@ -448,17 +447,41 @@ public static class ChatChrome
 
     public static void DrawTabCaps(VanillaRect strip)
     {
+        DrawTabEnds(strip);
+    }
+
+    /// <summary>
+    /// Part 7 is a square bar. Part 6 is the rounded left end and part 15 (flipped) is the right end.
+    /// Each tab gets both, so the pills stay separate instead of one continuous strip.
+    /// </summary>
+    public static void DrawTabEnds(VanillaRect tab)
+    {
         Catalog.EnsureLoaded();
         var scale = ImGuiHelpers.GlobalScale;
         var size = new Vector2(28f * scale, 28f * scale);
         var drawList = ImGui.GetWindowDrawList();
-        // Node 6 sits 5px left of the window. Widen the clip so that cap is not cut off.
-        var left = new Vector2(strip.X - 5f * scale, strip.Y);
-        var right = new Vector2(strip.X + strip.W, strip.Y);
-        drawList.PushClipRect(left - new Vector2(2f, 2f), right + size + new Vector2(2f, 2f), false);
+        // The curve in part 6 starts 8px into the sprite. Sit that curve on the tab's left edge.
+        var left = new Vector2(tab.X - 8f * scale, tab.Y);
+        // Flipped part 15 keeps its curve on the right and a few transparent pixels past it.
+        var right = new Vector2(tab.X + tab.W - 22f * scale, tab.Y);
         Drawer.Draw(drawList, Catalog.TabBarStart, left, left + size, 1f);
         Drawer.Draw(drawList, Catalog.TabBarEnd, right, right + size, 1f);
-        drawList.PopClipRect();
+    }
+
+    /// <summary>
+    /// Hit target on a strip end cap. The glyph is drawn only when that side has hidden tabs.
+    /// </summary>
+    public static bool TabCapArrow(string id, VanillaRect tab, bool left)
+    {
+        var scale = ImGuiHelpers.GlobalScale;
+        var width = 16f * scale;
+        var pos = left
+            ? new Vector2(tab.X - 2f * scale, tab.Y)
+            : new Vector2(tab.X + tab.W - width + 2f * scale, tab.Y);
+        ImGui.SetCursorScreenPos(pos);
+        var clicked = ImGui.InvisibleButton(id, new Vector2(width, tab.H));
+        DrawGlyph(new Vector2(pos.X, tab.Y + (tab.H - width) * 0.5f), width, left ? VanillaGlyph.Left : VanillaGlyph.Right, 0.95f);
+        return clicked;
     }
 
     public static bool ArrowButton(string id, VanillaGlyph glyph, Vector2 pos, float size, bool enabled)
@@ -494,12 +517,23 @@ public static class ChatChrome
     {
         Catalog.EnsureLoaded();
         var rect = frame.Grip;
+        // Submit the handle first so hover is known the same frame the textures are drawn.
+        ImGui.SetCursorScreenPos(rect.Min);
+        ImGui.InvisibleButton("###vanilla-resize-grip", rect.Size);
+        var hot = ImGui.IsItemHovered() || _gripDragging;
+        if (hot)
+            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNesw);
+
         var drawList = ImGui.GetWindowDrawList();
-        var under = Drawer.Draw(drawList, Catalog.ResizeUnder, rect.Min, rect.Max, 1f);
-        var over = Drawer.Draw(drawList, Catalog.ResizeGrip, rect.Min, rect.Max, 1f);
+        // Part 3 is the dim arrow. Part 4 is the bright stroke, and only shows while the pointer is on it.
+        var idle = new Vector4(0.55f, 0.55f, 0.55f, 1f);
+        var under = Drawer.Draw(drawList, Catalog.ResizeUnder, rect.Min, rect.Max, 1f, hot ? Vector4.One : idle);
+        var over = hot && Drawer.Draw(drawList, Catalog.ResizeGrip, rect.Min, rect.Max, 1f);
         if (!under && !over)
         {
-            var color = ImGui.GetColorU32(new Vector4(0.87f, 0.62f, 0.1f, 0.9f));
+            var color = ImGui.GetColorU32(hot
+                ? new Vector4(0.95f, 0.78f, 0.28f, 0.95f)
+                : new Vector4(0.45f, 0.45f, 0.45f, 0.7f));
             var max = rect.Max;
             var scale = frame.Scale;
             for (var i = 0; i < 3; i++)
@@ -509,12 +543,8 @@ public static class ChatChrome
             }
         }
 
-        // Node 1005 sits on the top-right of the log. Dragging it grows the window to the right and upward.
-        ImGui.SetCursorScreenPos(rect.Min);
-        ImGui.InvisibleButton("###vanilla-resize-grip", rect.Size);
-        if (ImGui.IsItemHovered() || _gripDragging)
-            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNesw);
-
+        // Top-right of the log. Dragging grows to the right and up, so the bottom-left corner stays put.
+        // ImGui's own grip is disabled with NoResize while vanilla style is on.
         var io = ImGui.GetIO();
         if (ImGui.IsItemActivated())
         {
@@ -546,58 +576,54 @@ public static class ChatChrome
 
     public static void BeginScrollDrag(VanillaRect track)
     {
-        var io = ImGui.GetIO();
-        var over = io.MousePos.X >= track.X && io.MousePos.X <= track.X + track.W
-                   && io.MousePos.Y >= track.Y && io.MousePos.Y <= track.Y + track.H;
-        if (!io.MouseDown[0])
-        {
-            _scrollDragging = false;
-            _scrollDragFraction = null;
-            return;
-        }
-
-        if (!_scrollDragging && over && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
-            _scrollDragging = true;
-        if (!_scrollDragging || _scrollMax <= 1f)
-            return;
-
-        var thumbH = ThumbHeight(track.H);
-        var travel = Math.Max(1f, track.H - thumbH);
-        _scrollDragFraction = Math.Clamp((io.MousePos.Y - track.Y - thumbH * 0.5f) / travel, 0f, 1f);
+        // The click is taken by the button in PaintScrollbar, after this frame's child has closed.
+        // NoteScroll applies that fraction on the next frame. Nothing to do before the child.
     }
 
     public static void NoteScroll()
     {
         _scrollView = Math.Max(1f, ImGui.GetWindowHeight());
         _scrollMax = ImGui.GetScrollMaxY();
-        if (_scrollDragFraction is float fraction)
+        if (_scrollDragFraction is float fraction && _scrollMax > 1f)
             ImGui.SetScrollY(fraction * _scrollMax);
         _scrollY = ImGui.GetScrollY();
+        if (!ImGui.GetIO().MouseDown[0])
+            _scrollDragFraction = null;
     }
 
     public static void PaintScrollbar(VanillaRect track)
     {
-        Catalog.EnsureLoaded();
-        var drawList = ImGui.GetWindowDrawList();
-        if (!Drawer.Draw(drawList, Catalog.ScrollTrack, track.Min, track.Max, 1f))
-            drawList.AddRectFilled(track.Min, track.Max, ImGui.GetColorU32(new Vector4(0.55f, 0.4f, 0.12f, 0.45f)), track.W * 0.3f);
-
+        // Hidden until the log actually overflows. The bright ScrollBarB piece is the thumb, not a full-height track.
         if (_scrollMax <= 1f)
             return;
 
+        Catalog.EnsureLoaded();
         var thumbH = ThumbHeight(track.H);
         var travel = Math.Max(1f, track.H - thumbH);
-        var thumbY = track.Y + travel * Math.Clamp(_scrollY / _scrollMax, 0f, 1f);
+        var thumbY = track.Y + travel * Math.Clamp(_scrollY / Math.Max(1f, _scrollMax), 0f, 1f);
         var thumbMin = new Vector2(track.X, thumbY);
         var thumbMax = thumbMin + new Vector2(track.W, thumbH);
-        if (!Drawer.Draw(drawList, Catalog.ScrollThumb, thumbMin, thumbMax, 1f))
-            drawList.AddRectFilled(thumbMin, thumbMax, ImGui.GetColorU32(new Vector4(0.95f, 0.95f, 0.9f, 0.85f)), track.W * 0.3f);
+        var drawList = ImGui.GetWindowDrawList();
+        if (!Drawer.Draw(drawList, Catalog.ScrollTrack ?? Catalog.ScrollThumb, thumbMin, thumbMax, 1f))
+            drawList.AddRectFilled(thumbMin, thumbMax, ImGui.GetColorU32(new Vector4(0.95f, 0.86f, 0.55f, 0.9f)), track.W * 0.3f);
+
+        ImGui.SetCursorScreenPos(track.Min);
+        ImGui.InvisibleButton("###vanilla-scroll", track.Size);
+        if (!ImGui.IsItemActive())
+            return;
+
+        var io = ImGui.GetIO();
+        _scrollDragFraction = Math.Clamp((io.MousePos.Y - track.Y - thumbH * 0.5f) / travel, 0f, 1f);
     }
 
     private static float ThumbHeight(float trackH)
     {
-        var ratio = _scrollView / (_scrollView + Math.Max(1f, _scrollMax));
-        return Math.Clamp(trackH * ratio, Math.Min(trackH, trackH * 0.18f), trackH);
+        var minThumb = Math.Min(trackH, 20f * ImGuiHelpers.GlobalScale);
+        if (_scrollMax <= 1f)
+            return minThumb;
+
+        var ratio = _scrollView / (_scrollView + _scrollMax);
+        return Math.Clamp(trackH * ratio, minThumb, trackH);
     }
 
     private sealed class EmptyDispose : IDisposable

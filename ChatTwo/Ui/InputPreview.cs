@@ -113,24 +113,39 @@ public partial class InputPreview : Window
         DrawPreview();
     }
 
-    public void CalculatePreview()
+    public void CalculatePreview(float wrapWidth = -1f)
     {
-        // We Pre-draw this once to get the actual height :HideThePain:
+        // Measure in a child parked off the window. A bare cursor at a negative position
+        // was drawing "Message Preview:" outside the log, on top of the channel name.
         PreviewHeight = 0;
+        if (PreviewMessage == null)
+            return;
 
-        var pos = ImGui.GetCursorPos();
-        ImGui.SetCursorPos(new Vector2(-500, -500));
-        var before = ImGui.GetCursorPosY();
-        using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, Vector2.Zero))
+        var restore = ImGui.GetCursorScreenPos();
+        var probe = new Vector2(-8000f, -8000f);
+        var width = wrapWidth > 1f ? wrapWidth : 2000f;
+        ImGui.SetCursorScreenPos(probe);
+        ImGui.PushClipRect(probe, probe + new Vector2(1f, 1f), false);
+        var flags = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoBackground;
+        using (var child = ImRaii.Child("##preview-measure", new Vector2(width, 4000f), false, flags))
         {
-            ImGui.TextUnformatted(Language.Options_Preview_Header);
-            DrawChunksPreview(PreviewMessage!.Content);
-        }
-        var after = ImGui.GetCursorPosY();
-        ImGui.SetCursorPos(pos);
+            if (child)
+            {
+                var before = ImGui.GetCursorPosY();
+                using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, Vector2.Zero))
+                {
+                    ImGui.TextUnformatted(Language.Options_Preview_Header);
+                    DrawChunksPreview(PreviewMessage.Content);
+                }
 
-        PreviewHeight = after - before;
-        PreviewHeight += IsWindowMode ? ImGui.GetStyle().WindowPadding.Y * 2 : 0;
+                PreviewHeight = Math.Max(0f, ImGui.GetCursorPosY() - before);
+            }
+        }
+
+        ImGui.PopClipRect();
+        ImGui.SetCursorScreenPos(restore);
+        if (IsWindowMode)
+            PreviewHeight += ImGui.GetStyle().WindowPadding.Y * 2f;
     }
 
     public void DrawPreview()
