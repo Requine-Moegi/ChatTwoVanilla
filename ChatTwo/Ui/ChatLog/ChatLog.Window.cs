@@ -940,8 +940,8 @@ public partial class ChatLog : Window, IChatWindow
         using (Plugin.FontManager.PushFixedAxis(14f))
         using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, Vector2.Zero))
         {
-            var labelY = frame.Label.Y + Math.Max(0f, (frame.Label.H - ImGui.GetTextLineHeight()) * 0.5f);
-            ImGui.SetCursorScreenPos(new Vector2(frame.Label.X, labelY));
+            var labelY = MathF.Round(frame.Label.Y + Math.Max(0f, (frame.Label.H - ImGui.GetTextLineHeight()) * 0.5f));
+            ImGui.SetCursorScreenPos(new Vector2(MathF.Round(frame.Label.X), labelY));
             DrawChannelName(tab, sendChannelSwitch);
         }
 
@@ -968,9 +968,9 @@ public partial class ChatLog : Window, IChatWindow
             }
         }
 
-        var textX = frame.Input.X + 12f * frame.Scale;
+        var textX = MathF.Round(frame.Input.X + 12f * frame.Scale);
         var inputW = Math.Max(20f, frame.Input.W - 20f * frame.Scale);
-        var padY = Math.Max(0f, (frame.Input.H - ImGui.GetTextLineHeight()) * 0.5f);
+        var padY = MathF.Max(0f, MathF.Round((frame.Input.H - ImGui.GetTextLineHeight()) * 0.5f));
         ImGui.SetCursorScreenPos(new Vector2(textX, frame.Input.Y));
         using (ImRaii.PushStyle(ImGuiStyleVar.FramePadding, new Vector2(0f, padY)))
             handler.DrawInputArea(tab, inputW, ref tellSpecial);
@@ -1102,11 +1102,26 @@ public partial class ChatLog : Window, IChatWindow
                     widths[n] += add;
             }
 
+            if (shown > 0)
+            {
+                var snapped = 0f;
+                var minTab = MathF.Round(28f * scale);
+                for (var n = _vanillaTabFirst; n < end; n++)
+                {
+                    widths[n] = MathF.Max(minTab, MathF.Round(widths[n]));
+                    snapped += widths[n];
+                }
+
+                widths[end - 1] = MathF.Max(minTab, widths[end - 1] + (MathF.Round(budget) - snapped));
+            }
+
             var drawList = ImGui.GetWindowDrawList();
-            drawList.PushClipRect(new Vector2(runLeft, strip.Y - 8f * scale), new Vector2(runLeft + budget, strip.Y + strip.H), true);
+            drawList.PushClipRect(new Vector2(runLeft - 10f * scale, strip.Y - 8f * scale), new Vector2(runLeft + budget + 2f * scale, strip.Y + strip.H), true);
             var x = runLeft;
             var clickedTab = -1;
             var drewTab = false;
+            VanillaRect activeRect = default;
+            var hasActive = false;
             for (var n = _vanillaTabFirst; n < end; n++)
             {
                 var tabIndex = visible[n];
@@ -1122,17 +1137,27 @@ public partial class ChatLog : Window, IChatWindow
                 var active = tabIndex == Plugin.LastTab;
                 var entry = Plugin.Config.Tabs[tabIndex];
                 var unread = !active && entry.Unread > 0 && entry.UnreadMode != UnreadMode.None;
+                if (active)
+                {
+                    activeRect = rect;
+                    hasActive = true;
+                }
+
                 ChatChrome.DrawTabFace(rect, hovered);
 
                 var textSize = ImGui.CalcTextSize(labels[n]);
-                var textPos = rect.Min + new Vector2((rect.W - textSize.X) * 0.5f, (rect.H - textSize.Y) * 0.5f);
-                var color = active ? Vector4.One : new Vector4(0.86f, 0.86f, 0.86f, 1f);
+                var textPos = new Vector2(
+                    MathF.Round(rect.X + (rect.W - textSize.X) * 0.5f),
+                    MathF.Round(rect.Y + (rect.H - textSize.Y) * 0.5f));
+                var color = active
+                    ? Vector4.One
+                    : unread
+                        ? new Vector4(0.94f, 0.82f, 0.52f, 1f)
+                        : new Vector4(0.86f, 0.86f, 0.86f, 1f);
                 var clipPad = 8f * scale;
                 drawList.PushClipRect(rect.Min + new Vector2(clipPad, 0f), rect.Max - new Vector2(clipPad, 0f), true);
                 VanillaText.DrawAt(textPos, labels[n], color);
                 drawList.PopClipRect();
-                if (active || unread)
-                    ChatChrome.DrawTabMarker(rect);
                 x += widths[n] + gap;
             }
 
@@ -1149,6 +1174,9 @@ public partial class ChatLog : Window, IChatWindow
                 if (canRight && ChatChrome.TabCapArrow("###vanilla-tab-right", new Vector2(run.X + run.W, run.Y), cap, false))
                     scrollDelta++;
             }
+
+            if (hasActive)
+                ChatChrome.DrawTabMarker(activeRect);
 
             if (scrollDelta != 0)
                 clickedTab = -1;

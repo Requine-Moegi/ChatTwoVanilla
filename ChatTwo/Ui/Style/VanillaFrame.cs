@@ -30,6 +30,11 @@ public readonly struct VanillaFrame
     public VanillaRect Grip { get; init; }
     public float Scale { get; init; }
 
+    private static float Snap(float value) => MathF.Round(value);
+
+    private static VanillaRect R(float x, float y, float w, float h)
+        => new(Snap(x), Snap(y), MathF.Max(1f, Snap(w)), MathF.Max(1f, Snap(h)));
+
     public static VanillaFrame From(Vector2 origin, Vector2 size, float scale)
     {
         float S(float design) => design * scale;
@@ -39,19 +44,19 @@ public readonly struct VanillaFrame
         var step = S(24f);
 
         var backgroundHeight = Math.Max(S(48f), height - S(52f));
-        var background = new VanillaRect(origin.X, origin.Y, width, backgroundHeight);
+        var background = R(origin.X, origin.Y, width, backgroundHeight);
 
-        var label = new VanillaRect(
+        var label = R(
             origin.X + S(26f),
             origin.Y + height - S(67f),
             Math.Max(S(40f), width - S(30f)),
             S(21f));
-        var input = new VanillaRect(
+        var input = R(
             origin.X + S(23f),
             origin.Y + height - S(53f),
             Math.Max(S(40f), width - S(27f)),
             button);
-        var bubble = new VanillaRect(origin.X, input.Y, button, button);
+        var bubble = R(origin.X, input.Y, button, button);
 
         var rowY = origin.Y + height - button;
         var closeX = origin.X + width - button;
@@ -59,22 +64,24 @@ public readonly struct VanillaFrame
         var plusX = gearX - step;
         var tabX = origin.X + S(23f);
         var tabRight = plusX - S(21f);
-        var tabStrip = new VanillaRect(tabX, rowY, Math.Max(S(36f), tabRight - tabX), button);
+        var tabStrip = R(tabX, rowY, Math.Max(S(36f), tabRight - tabX), button);
 
+        var grip = R(background.X + background.W - S(36f), background.Y + S(10f), button, button);
         var messageX = background.X + S(24f);
         var messageY = background.Y + S(16f);
         var messageBottom = label.Y - S(2f);
-        var messages = new VanillaRect(
+        // Stop before the grip so a wrapped line cannot run under the arrow.
+        var messageRight = grip.X - S(4f);
+        var messages = R(
             messageX,
             messageY,
-            Math.Max(S(40f), background.X + background.W - S(12f) - messageX),
+            Math.Max(S(40f), messageRight - messageX),
             Math.Max(S(20f), messageBottom - messageY));
-        var scroll = new VanillaRect(
+        var scroll = R(
             background.X + S(12f),
             background.Y + S(12f),
             S(12f),
             Math.Max(S(24f), background.H - S(24f)));
-        var grip = new VanillaRect(background.X + background.W - S(36f), background.Y + S(10f), button, button);
 
         return new VanillaFrame
         {
@@ -85,9 +92,9 @@ public readonly struct VanillaFrame
             Input = input,
             Bubble = bubble,
             TabStrip = tabStrip,
-            Plus = new VanillaRect(plusX, rowY, button, button),
-            Gear = new VanillaRect(gearX, rowY, button, button),
-            Close = new VanillaRect(closeX, rowY, button, button),
+            Plus = R(plusX, rowY, button, button),
+            Gear = R(gearX, rowY, button, button),
+            Close = R(closeX, rowY, button, button),
             Grip = grip,
             Scale = scale,
         };

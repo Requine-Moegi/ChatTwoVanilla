@@ -433,15 +433,15 @@ public static class ChatChrome
     {
         Catalog.EnsureLoaded();
         var scale = ImGuiHelpers.GlobalScale;
-        // The diamond sits near the middle of the 28px sprite. Center that sprite on the tab
-        // and sit it 4px above the pill, matching node 2 of component 1011.
+        // Component 1011 node 2: the 28px marker is at (-6, -4). The diamond in that
+        // sheet then sits at the top-left of the tab, not in the middle of the label.
         var size = 28f * scale;
-        var pos = new Vector2(tab.X + tab.W * 0.5f - size * 0.5f, tab.Y - 4f * scale);
+        var pos = new Vector2(MathF.Round(tab.X - 6f * scale), MathF.Round(tab.Y - 4f * scale));
         if (Drawer.Draw(ImGui.GetWindowDrawList(), Catalog.TabDot, pos, pos + new Vector2(size, size), 1f))
             return;
 
         ImGui.GetWindowDrawList().AddCircleFilled(
-            new Vector2(tab.X + tab.W * 0.5f, tab.Y + 4f * scale),
+            pos + new Vector2(13.5f * scale, 14f * scale),
             3f * scale,
             ImGui.GetColorU32(new Vector4(0.95f, 0.9f, 0.75f, 1f)));
     }
@@ -478,7 +478,8 @@ public static class ChatChrome
         var unit = size / 28f;
         var center = (left ? new Vector2(17.5f, 14.5f) : new Vector2(10.5f, 14.5f)) * unit;
         var glyph = 16f * unit;
-        DrawGlyph(pos + center - new Vector2(glyph * 0.5f, glyph * 0.5f), glyph, left ? VanillaGlyph.Left : VanillaGlyph.Right, 0.95f);
+        var glyphPos = pos + center - new Vector2(glyph * 0.5f, glyph * 0.5f);
+        DrawGlyph(new Vector2(MathF.Round(glyphPos.X), MathF.Round(glyphPos.Y)), glyph, left ? VanillaGlyph.Left : VanillaGlyph.Right, 0.95f);
         return clicked;
     }
 
@@ -538,28 +539,28 @@ public static class ChatChrome
                 hovered = ImGui.IsItemHovered();
                 activated = ImGui.IsItemActivated();
             }
-        }
 
-        var hot = hovered || _gripDragging;
-        if (hot)
-            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNesw);
+            var hotNow = hovered || _gripDragging;
+            if (hotNow)
+                ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNesw);
 
-        var drawList = ImGui.GetWindowDrawList();
-        // Part 3 is the dim arrow. Part 4 is the bright stroke, and only shows while the pointer is on the grip.
-        var idle = new Vector4(0.55f, 0.55f, 0.55f, 1f);
-        var under = Drawer.Draw(drawList, Catalog.ResizeUnder, sprite.Min, sprite.Max, 1f, hot ? Vector4.One : idle);
-        var over = hot && Drawer.Draw(drawList, Catalog.ResizeGrip, sprite.Min, sprite.Max, 1f);
-        if (!under && !over)
-        {
-            var color = ImGui.GetColorU32(hot
-                ? new Vector4(0.95f, 0.78f, 0.28f, 0.95f)
-                : new Vector4(0.45f, 0.45f, 0.45f, 0.7f));
-            var max = sprite.Max;
-            var scale = frame.Scale;
-            for (var i = 0; i < 3; i++)
+            // Drawn in this child so the arrow stays above log text. The child is only the hit rect.
+            var drawList = ImGui.GetWindowDrawList();
+            var idle = new Vector4(0.55f, 0.55f, 0.55f, 1f);
+            var under = Drawer.Draw(drawList, Catalog.ResizeUnder, sprite.Min, sprite.Max, 1f, hotNow ? Vector4.One : idle);
+            var over = hotNow && Drawer.Draw(drawList, Catalog.ResizeGrip, sprite.Min, sprite.Max, 1f);
+            if (!under && !over)
             {
-                var offset = (i + 1) * 4f * scale;
-                drawList.AddLine(new Vector2(max.X - offset, sprite.Y + 2f * scale), new Vector2(max.X - 2f * scale, sprite.Y + offset), color, 1.4f);
+                var color = ImGui.GetColorU32(hotNow
+                    ? new Vector4(0.95f, 0.78f, 0.28f, 0.95f)
+                    : new Vector4(0.45f, 0.45f, 0.45f, 0.7f));
+                var max = sprite.Max;
+                var scale = frame.Scale;
+                for (var i = 0; i < 3; i++)
+                {
+                    var offset = (i + 1) * 4f * scale;
+                    drawList.AddLine(new Vector2(max.X - offset, sprite.Y + 2f * scale), new Vector2(max.X - 2f * scale, sprite.Y + offset), color, 1.4f);
+                }
             }
         }
 
@@ -618,9 +619,9 @@ public static class ChatChrome
             return;
 
         Catalog.EnsureLoaded();
-        var thumbH = ThumbHeight(track.H);
+        var thumbH = MathF.Round(ThumbHeight(track.H));
         var travel = Math.Max(1f, track.H - thumbH);
-        var thumbY = track.Y + travel * Math.Clamp(_scrollY / Math.Max(1f, _scrollMax), 0f, 1f);
+        var thumbY = MathF.Round(track.Y + travel * Math.Clamp(_scrollY / Math.Max(1f, _scrollMax), 0f, 1f));
         var thumbMin = new Vector2(track.X, thumbY);
         var thumbMax = thumbMin + new Vector2(track.W, thumbH);
         var drawList = ImGui.GetWindowDrawList();

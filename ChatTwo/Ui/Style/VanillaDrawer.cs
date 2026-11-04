@@ -121,8 +121,13 @@ public sealed class VanillaDrawer
 
         float[] srcX = [part.U, part.U + left, part.U + part.W - right, part.U + part.W];
         float[] srcY = [part.V, part.V + top, part.V + part.H - bottom, part.V + part.H];
-        float[] dstX = [min.X, min.X + leftPx, max.X - rightPx, max.X];
-        float[] dstY = [min.Y, min.Y + topPx, max.Y - bottomPx, max.Y];
+        float Px(float value) => MathF.Round(value);
+        float[] dstX = [Px(min.X), Px(min.X + leftPx), Px(max.X - rightPx), Px(max.X)];
+        float[] dstY = [Px(min.Y), Px(min.Y + topPx), Px(max.Y - bottomPx), Px(max.Y)];
+        if (dstX[1] > dstX[2])
+            dstX[1] = dstX[2] = (dstX[1] + dstX[2]) * 0.5f;
+        if (dstY[1] > dstY[2])
+            dstY[1] = dstY[2] = (dstY[1] + dstY[2]) * 0.5f;
 
         for (var y = 0; y < 3; y++)
         {

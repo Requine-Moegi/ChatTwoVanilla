@@ -220,7 +220,9 @@ public class Popout : Window, IChatWindow
         using (Plugin.FontManager.PushFixedAxis(12f))
         {
             var textSize = ImGui.CalcTextSize(Tab.Name);
-            var textPos = tab.Min + new Vector2((tab.W - textSize.X) * 0.5f, (tab.H - textSize.Y) * 0.5f);
+            var textPos = new Vector2(
+                MathF.Round(tab.X + (tab.W - textSize.X) * 0.5f),
+                MathF.Round(tab.Y + (tab.H - textSize.Y) * 0.5f));
             VanillaText.DrawAt(textPos, Tab.Name, Vector4.One);
         }
 
