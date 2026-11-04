@@ -150,6 +150,7 @@ public sealed class Plugin : IDalamudPlugin
 
             Framework.Update += FrameworkUpdate;
             Interface.UiBuilder.Draw += Draw;
+            Interface.UiBuilder.OpenMainUi += OpenMainUi;
             Interface.LanguageChanged += LanguageChanged;
 
             if (Config.ShowEmotes)
@@ -188,6 +189,7 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         Interface.LanguageChanged -= LanguageChanged;
+        Interface.UiBuilder.OpenMainUi -= OpenMainUi;
         Interface.UiBuilder.Draw -= Draw;
         Framework.Update -= FrameworkUpdate;
         GameFunctions.GameFunctions.SetChatInteractable(true);
@@ -209,6 +211,19 @@ public sealed class Plugin : IDalamudPlugin
 
         EmoteCache.Dispose();
         ServerCore?.DisposeAsync().AsTask().Wait();
+    }
+
+    /// <summary>
+    /// Dalamud's plugin installer calls this to open the main chat window.
+    /// Settings stay on UiBuilder.OpenConfigUi.
+    /// </summary>
+    private void OpenMainUi()
+    {
+        ChatLog.IsOpen = true;
+        if (ChatLog.CurrentHideState == GameFunctions.Types.HideState.User)
+            ChatLog.CurrentHideState = GameFunctions.Types.HideState.None;
+        ChatLog.InputHandler.LastActivityTime = Environment.TickCount64;
+        ChatLog.BringToFront();
     }
 
     private void Draw()
