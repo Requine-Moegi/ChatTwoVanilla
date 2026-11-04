@@ -16,7 +16,7 @@ Chat 2 Vanilla is distributed as a Dalamud custom plugin repository.
 2. Open **Experimental**.
 3. Under custom plugin repositories, add:
 
-   `https://raw.githubusercontent.com/Dillard-Coffey/ChatTwoVanilla/main/repo.json`
+   `https://raw.githubusercontent.com/Requine-Moegi/ChatTwoVanilla/main/repo.json`
 
 4. Open the plugin installer and install **Chat 2 Vanilla**.
 
