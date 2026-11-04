@@ -28,32 +28,36 @@ Nine-grid margins come from the ULD node (`Left`/`Top`/`Right`/`Bottom` offsets)
 
 ### What the windows do
 
-While vanilla style is on:
+While vanilla style is on, `VanillaFrame` places every node the way `ChatLog.uld` does on its 324×200 widget, then keeps those distances when the window is a different size. Bottom chrome stays a fixed design distance from the bottom of the window. The log nine-grid grows to fill the space above it. Positions are design pixels times `ImGuiHelpers.GlobalScale`. Window padding is zero, so the ULD origin is the window origin. `WindowBg` is pushed transparent and the window uses `NoTitleBar` and `NoBackground`, so the stone (or whatever is behind the window) shows through the fade. Chat 2's opacity slider is not stacked on top.
 
-- The main window and popouts use `NoTitleBar` and `NoBackground`. Chat 2's opacity slider is not stacked on top. Background alpha is the game's log permeation (see below). A popout with independent opacity uses that tab's opacity instead.
-- `CanMove` and `CanResize` are still honoured. The Dalamud style override is not pushed. The title-bar toggles are ignored for these windows until vanilla style is turned off.
-- The background is the first thing drawn on the window draw list.
-- The order inside the frame is the game's: messages, the channel name, a framed input with the speech-bubble channel button on its left, then the tab strip along the bottom. Sidebar tabs are not drawn while vanilla style is on.
-- Every non-popout tab is a content-sized pill on that strip. The active tab gets the highlight dot. Unread is a dot on the pill, not an unread count in the label. When the pills do not fit, left and right arrows scroll them one at a time, and the mouse wheel does the same while the pointer is over the strip. The strip does not shrink the pills to squeeze them in.
-- After the pills, four round buttons: add a tab, open settings, focus the input, hide the log. A popped-out tab uses the same bottom row with that one pill, settings, focus, and a button that sends the tab back to the main window. FontAwesome icons are not drawn on these windows. Rename, reorder, delete, and pop-out stay on the tab right-click menu. Novice Network stays in settings.
-- Scrollbar colours are pushed to alpha 0 so ImGui still handles drag and wheel. The game track and thumb are painted from the scroll position. The log scrollbar has no arrow buttons. The tab-strip arrows are only for extra tabs.
-- The resize grip uses the texture when the catalog finds one, drawn into the bottom-right corner. Its ImGui colours are transparent. If a texture is missing, the frame, pills, input, circles, scrollbar, and grip fall back to simple shapes so the layout is still readable.
-- Chat text, the input preview, and the command-help window use the Axis game font at the game's log font size. Settings keep the user's font, because that push is only inside the chat windows.
+At the default 324×200 size the nodes are:
+
+| Piece | ULD | Where |
+| --- | --- | --- |
+| Log background | Node 14, part list 1 part 12, nine-grid 20, node alpha 127 | 0,0 and 324×148. Height becomes `windowH - 52`. It does not cover the input or the tabs. |
+| Channel label | Node 4, Axis 14, left-aligned in a 21px box | x+26, `windowH - 67` |
+| Text input | Component 1012, part 17, nine-grid 13 | x+23, `windowH - 53`, width `windowW - 27`, height 28. Text inset is 12px. |
+| Channel button | DropDown 1008, CircleButtons part 5 | x+0, same row as the input, 28×28 |
+| Tab strip | Component 1011, width 204 | x+23, `windowH - 28`, ending 21px before the plus button |
+| Left cap | Part 6 | 5px left of the strip |
+| Right cap | Part 15, wrap mode horizontal flip | at the right end of the strip |
+| Plus, gear, close | Buttons 1001, 1004, 1003 (CircleButtons parts 8, 0, 24) | 28px, step 24, flush to the right edge. The sprout (part 11) is not drawn. |
+| Resize grip | Button 1005, parts 3 (alpha 204) and 4 | top-right of the log, `windowW - 36`, y+10. Dragging it grows the window right and up. |
+| Scrollbar | `ChatLogPanel.uld` ScrollBarB, track part 0 (slices 4,5,5,5), thumb part 1 (5,5,6,5) | x+12, y+12, 12px wide, height `background - 24`. Left side, not ImGui's bar. |
+
+- Every non-popout tab is a content-sized pill on that strip (text width plus 18, at least 28, gap 2). The same part 7 face is used for every pill. The active tab, and an unread tab, get part 9 (the diamond) centred on the pill and 4px above it. Unread is that marker, not a count in the label. When the pills do not fit, chevrons scroll them, and the wheel does the same while the pointer is over the strip. The pills are not shrunk to fit.
+- The three circles are add a tab, open settings, and hide the log. Clicking the field focuses the input. There is no fourth circle: the file only has three slots, and the close slot is the X rather than the sprout. A popout draws one pill across the strip, the gear, and a close button that docks the tab. FontAwesome is not drawn on these windows. Rename, reorder, delete, and pop-out stay on the tab right-click menu. Novice Network stays in settings. Sidebar tabs are not drawn while vanilla style is on.
+- The message child uses `NoScrollbar`. ImGui's scrollbar colours and size are also pushed to nothing, so the grey bar cannot sit in the text. Wheel still scrolls the child. Dragging the ScrollBarB thumb sets the scroll position. The log scrollbar has no arrow buttons.
+- Chat text uses Axis at the game's log font size. The channel label is Axis 14 and tab labels are Axis 12, which is what those ULD text nodes specify, not the log slider. Settings keep the user's font.
 - Channel colour is the user's Colours-tab override if one is set, otherwise `Chat.GetChannelColor` while vanilla style is on, otherwise Chat 2's default. User overrides still win. The HTTP API and the database viewer are not switched over.
 - Italic text uses an Axis handle with `SkewStrength` while vanilla style is on.
 - Wrapped and unwrapped chat text, and pretty timestamps, get an 8-direction 1px outline (scaled by `max(1, GlobalScale * 0.75)`) drawn before `TextUnformatted`.
+- Background alpha is node alpha 127/255 multiplied by log permeation. The input frame uses permeation for the input (`LogPermeationRateInput`) and does not use the 127 node alpha. Tabs and buttons stay opaque. A popout with independent opacity uses that tab's opacity in place of permeation, including the input frame.
+- If a texture is missing, that one piece falls back to a simple shape. The fallback background is a soft black fade, not a hard rectangle.
 
-Part choice follows the component type stored on the ULD node, and the node's own part index. It is logged:
+Part ids are fixed in `BindKnownParts`. `/chat2vanillaDebugger` prints each one (`partList`, `part`, UV, slice).
 
-- Window background: a nine-grid that has slice margins, preferring one whose texture path contains `ChatLog.uld`. The input field does not reuse this texture.
-- Text-input component: the input field. The largest nine-grid in that component wins.
-- Tabbed component: tab faces wider and taller than 12. One shared face is tinted (inactive 0.68, hover 0.9, active 1). Two similar faces use the larger as active. The smallest tab part, up to 16 pixels, is the active dot.
-- Channel icon: a small image just left of the text-input node in `ChatLog.uld`.
-- Tab-strip caps: images in the bottom 45% of the shell, short and not wide, ordered by X.
-- Button component: the round button face. Scrollbar component: track, then a smaller part as the thumb.
-- Small button nearest the bottom-right: resize grip.
-
-`/chat2vanillaDebugger` prints the mapping under "Vanilla style".
+## Texture paths
 
 ## Texture paths
 
@@ -108,9 +112,13 @@ These are decisions a live client needs to confirm. The code picks one behaviour
 - **Font size unit.** Values 8–36 are used as points. A smaller non-zero integer is an index into 10, 12, 14, 16, 18, 20, 23. Zero falls back to 12.
 - **Theme source.** `ColorThemeType` is used unless `UiAssetType` disagrees. Both numbers are in the debugger summary.
 - **High-resolution UVs.** Doubling is based on the file that loaded, not only on the config. If both sheets exist and the preference is wrong, the image is sharp or soft but the UVs still match the sheet that was opened. Compare UI Resolution Standard and High (4K).
-- **Which part is which.** Component type picks the input, the tab face, the round button, and the scrollbar. The channel icon, the tab caps, and the corner grip still use position. The summary log is the way to see a wrong guess: it prints `partList`, `part`, and the node size. One shared tab part is tinted instead of swapped.
-- **Nine-grid center** is stretched, not tiled.
-- **Log scrollbar arrows** are not separate hit targets. Drag and wheel use ImGui's invisible bar. Arrows on the tab strip only scroll extra tabs.
+- **Which part is which.** Part ids are the ones named in `ChatLog.uld` and `ChatLogPanel.uld` (background 12, input 17, pill 7, marker 9, caps 6 and 15, grip 3+4, circles 8/0/24, bubble 5, scrollbar 0 and 1). The summary log prints those ids. One shared pill is used for every tab; the marker is what shows the active tab.
+- **Permeation times node alpha.** The log nine-grid is drawn at `127/255 * permeation`. If the client replaces the node alpha with permeation instead of multiplying, this panel will be darker than the real log.
+- **Nine-grid center** is stretched, not tiled. The 20px border of part 12 already contains the fade, so the stretched center is the solid middle.
+- **Right cap flip.** Node 8 wrap mode 1 is drawn by swapping U. If the client mirrors around a different origin, the cap can be off by a pixel.
+- **Active marker.** The template places part 9 at (-6, -4) on a 28px tab with multiply 50. The marker is centred on whatever width the pill ended up, 4px above it, at full multiply. A wide tab's diamond should sit in the middle. The dim multiply is the template's idle state and is not used for the active or unread pill.
+- **Grip hit target.** The graphic is the top-right of the log, and dragging that graphic resizes. ImGui still also resizes from the window edges. The two can disagree while the window is docked: the graphic does not resize a docked window.
+- **Log scrollbar.** The main `ChatLog.uld` has no scrollbar node. The track and thumb are the parts from `ChatLogPanel.uld`, placed on the left at the panel's (12, 12) inset. Drag starts only on a click over the track. The thumb size uses the child's scroll range from the previous frame.
 - **Sidebar tabs** are ignored while vanilla style is on. Turn vanilla style off to get Chat 2's sidebar.
 - **Text outline** is eight extra `AddText` calls per wrapped piece. Turn vanilla style off to disable it.
 - **Tab click.** The message list is drawn before the strip, so a click highlights on the next frame. A keyboard tab change is applied before the messages, so that switch is the same frame.
@@ -127,9 +135,9 @@ Build with the steps in the README, install `ChatTwoVanilla.dll` next to its jso
 5. Change a channel colour in the game's log settings, with no override on the Colours tab. New lines and the input text should pick it up. Set a Colours-tab override and confirm it wins. Clear the override and confirm the game colour returns.
 6. Tabs sit on the bottom, as pills, with the active dot. Add more than four. The strip should scroll with the arrows and with the wheel, without shrinking the pills or showing an ImGui tab bar. Unread is a dot, not a count in the name. Right-click still renames, reorders, deletes, and pops out. A popped-out tab leaves the main strip and keeps the same bottom row. Switching tabs should keep filters and the input channel behaviour Chat 2 already has.
 7. Turn on sidebar tabs while vanilla style is on. The bottom strip should stay. Turn vanilla style off and the sidebar should come back.
-8. The channel name sits above the field. The field is framed. The speech bubble on its left opens the channel list. The round buttons are add tab, settings, focus input, and hide. No FontAwesome glyphs on the log itself. Type, use autocomplete, click a link, and send an emote. Links must still be clickable (the outline is not the hit target).
-9. Scroll with the wheel and by dragging the thumb. The thumb should track the log. The log scrollbar has no arrow buttons.
-10. Resize from the corner. The grip, if the summary lists one, should sit on the corner and not cover the hide button.
+8. The channel name sits on the lower edge of the dark panel. The field below it is the rounded input frame, with the speech bubble overlapping its left side. The round buttons are plus, gear, and X. No FontAwesome glyphs on the log itself. Type, use autocomplete, click a link, and send an emote. Links must still be clickable (the outline is not the hit target).
+9. The scrollbar is the thin track on the left of the text. Scroll with the wheel and by dragging the thumb. There is no grey ImGui bar in the text.
+10. The resize graphic is the diagonal mark at the top-right of the dark panel. Dragging it should grow the window to the right and upward.
 11. Change the game's log font size. Axis in this window should follow. Open settings and confirm settings are still in your Dalamud font.
 12. Italic emotes or emphasis should slant in Axis while vanilla style is on.
 13. Load original Chat 2 at the same time. Each plugin should have its own window, its own commands, its own config file, and its own IPC. Registering a context menu on `ChatTwo.Register` must not fire inside this fork, and `ChatTwoVanilla.Register` must not fire inside Chat 2.

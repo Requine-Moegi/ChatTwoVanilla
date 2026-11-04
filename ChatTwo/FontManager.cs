@@ -13,6 +13,7 @@ public class FontManager
     public IFontHandle AxisItalic = null!;
 
     private IFontHandle? _vanillaAxis;
+    private readonly Dictionary<int, IFontHandle> _fixedAxis = new();
     private IFontHandle? _vanillaAxisItalic;
     private float _vanillaAxisPt = -1f;
 
@@ -176,6 +177,22 @@ public class FontManager
     {
         EnsureVanillaAxis();
         return _vanillaAxis!.Push();
+    }
+
+    /// <summary>
+    /// Axis at a fixed point size. The chat-log ULD uses 14 for the channel name and 12 for tab text,
+    /// independent of the log font size.
+    /// </summary>
+    public IDisposable PushFixedAxis(float pt)
+    {
+        var key = (int)Math.Round(pt * 100f);
+        if (!_fixedAxis.TryGetValue(key, out var handle))
+        {
+            handle = Plugin.Interface.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Axis, SizeInPx(pt)));
+            _fixedAxis[key] = handle;
+        }
+
+        return handle.Push();
     }
 
     public IFontHandle VanillaAxisItalic

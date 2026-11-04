@@ -35,17 +35,7 @@ public static class ChatChrome
         return Plugin.Instance.FontManager.PushVanillaAxis();
     }
 
-    public static Vector2 WindowPadding
-    {
-        get
-        {
-            var scale = ImGuiHelpers.GlobalScale;
-            Catalog.EnsureLoaded();
-            var background = Catalog.Background;
-            var x = background == null ? 10f : Math.Clamp((int)background.Left, 8, 28);
-            return new Vector2(x, 4f) * scale;
-        }
-    }
+    public static Vector2 WindowPadding => Vector2.Zero;
 
     public static float TabHeight
     {
@@ -86,18 +76,11 @@ public static class ChatChrome
 
     public static float TabRowHeight => Math.Max(TabHeight, ButtonSize);
 
-    public static float ScrollbarSize
-    {
-        get
-        {
-            var scale = ImGuiHelpers.GlobalScale;
-            Catalog.EnsureLoaded();
-            var part = Catalog.ScrollTrack;
-            if (part == null)
-                return 14f * scale;
-            return Math.Clamp(part.W * scale, 10f * scale, 22f * scale);
-        }
-    }
+    /// <summary>
+    /// The visible scrollbar is ScrollBarB, drawn by hand on the left of the log.
+    /// ImGui's own bar stays a pixel wide and fully transparent so it does not sit in the text.
+    /// </summary>
+    public static float ScrollbarSize => 1f;
 
     public static void PushWindowStyle()
     {
@@ -110,6 +93,7 @@ public static class ChatChrome
         var quietButton = new Vector4(0f, 0f, 0f, 0.18f);
         (ImGuiCol Id, Vector4 Color)[] colors =
         [
+            (ImGuiCol.WindowBg, transparent),
             (ImGuiCol.ChildBg, transparent),
             (ImGuiCol.ScrollbarBg, transparent),
             (ImGuiCol.ScrollbarGrab, transparent),
@@ -385,6 +369,235 @@ public static class ChatChrome
                 drawList.AddTriangleFilled(center + new Vector2(-u * 0.4f, u * 0.8f), center + new Vector2(-u * 1.6f, u * 2.2f), center + new Vector2(u * 0.6f, u * 0.8f), color);
                 break;
         }
+    }
+
+    private static float _scrollY;
+    private static float _scrollMax;
+    private static float _scrollView = 1f;
+    private static float? _scrollDragFraction;
+    private static bool _scrollDragging;
+
+    public static VanillaFrame Frame()
+        => VanillaFrame.From(ImGui.GetWindowPos(), ImGui.GetWindowSize(), ImGuiHelpers.GlobalScale);
+
+    public static bool DrawPart(VanillaPart? part, Vector2 min, Vector2 max, float alpha = 1f, Vector4? tint = null)
+    {
+        Catalog.EnsureLoaded();
+        return Drawer.Draw(ImGui.GetWindowDrawList(), part, min, max, alpha, tint);
+    }
+
+    public static void DrawLogBackground(VanillaFrame frame, float? permeation = null)
+    {
+        Catalog.EnsureLoaded();
+        var rect = frame.Background;
+        var drawList = ImGui.GetWindowDrawList();
+        var alphaArg = permeation ?? VanillaGameLook.LogBackgroundAlpha();
+        if (Drawer.Draw(drawList, Catalog.Background, rect.Min, rect.Max, alphaArg))
+            return;
+
+        // Soft edge, no hard border. The real part is a 20px fade into black.
+        var fade = 18f * frame.Scale;
+        var alpha = 0.5f * alphaArg;
+        drawList.AddRectFilled(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0f, 0f, 0f, alpha * 0.35f)));
+        var inner = new Vector2(rect.X + fade, rect.Y + fade);
+        var innerMax = new Vector2(rect.X + rect.W - fade, rect.Y + rect.H - fade);
+        if (innerMax.X > inner.X && innerMax.Y > inner.Y)
+            drawList.AddRectFilled(inner, innerMax, ImGui.GetColorU32(new Vector4(0f, 0f, 0f, alpha)));
+    }
+
+    public static void DrawInputFrame(VanillaRect rect, float? permeation = null)
+    {
+        Catalog.EnsureLoaded();
+        var drawList = ImGui.GetWindowDrawList();
+        if (Drawer.Draw(drawList, Catalog.InputBackground, rect.Min, rect.Max, permeation ?? VanillaGameLook.LogInputAlpha()))
+            return;
+
+        var rounding = rect.H * 0.45f;
+        drawList.AddRectFilled(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.02f, 0.02f, 0.02f, 0.92f)), rounding);
+        drawList.AddRect(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.75f, 0.75f, 0.72f, 0.9f)), rounding, ImDrawFlags.None, 1.25f);
+    }
+
+    public static void DrawTabFace(VanillaRect rect, bool hovered)
+    {
+        Catalog.EnsureLoaded();
+        var tint = hovered ? new Vector4(1.12f, 1.12f, 1.12f, 1f) : Vector4.One;
+        var drawList = ImGui.GetWindowDrawList();
+        if (Drawer.Draw(drawList, Catalog.TabActive ?? Catalog.TabInactive, rect.Min, rect.Max, 1f, tint))
+            return;
+
+        var rounding = rect.H * 0.35f;
+        drawList.AddRectFilled(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.22f, 0.22f, 0.22f, 0.95f)), rounding);
+    }
+
+    public static void DrawTabMarker(VanillaRect tab)
+    {
+        Catalog.EnsureLoaded();
+        var scale = ImGuiHelpers.GlobalScale;
+        // The diamond sits near the middle of the 28px sprite. Center that sprite on the tab
+        // and sit it 4px above the pill, matching node 2 of component 1011.
+        var size = 28f * scale;
+        var pos = new Vector2(tab.X + tab.W * 0.5f - size * 0.5f, tab.Y - 4f * scale);
+        if (Drawer.Draw(ImGui.GetWindowDrawList(), Catalog.TabDot, pos, pos + new Vector2(size, size), 1f))
+            return;
+
+        ImGui.GetWindowDrawList().AddCircleFilled(
+            new Vector2(tab.X + tab.W * 0.5f, tab.Y + 4f * scale),
+            3f * scale,
+            ImGui.GetColorU32(new Vector4(0.95f, 0.9f, 0.75f, 1f)));
+    }
+
+    public static void DrawTabCaps(VanillaRect strip)
+    {
+        Catalog.EnsureLoaded();
+        var scale = ImGuiHelpers.GlobalScale;
+        var size = new Vector2(28f * scale, 28f * scale);
+        var drawList = ImGui.GetWindowDrawList();
+        // Node 6 sits 5px left of the window. Widen the clip so that cap is not cut off.
+        var left = new Vector2(strip.X - 5f * scale, strip.Y);
+        var right = new Vector2(strip.X + strip.W, strip.Y);
+        drawList.PushClipRect(left - new Vector2(2f, 2f), right + size + new Vector2(2f, 2f), false);
+        Drawer.Draw(drawList, Catalog.TabBarStart, left, left + size, 1f);
+        Drawer.Draw(drawList, Catalog.TabBarEnd, right, right + size, 1f);
+        drawList.PopClipRect();
+    }
+
+    public static bool ArrowButton(string id, VanillaGlyph glyph, Vector2 pos, float size, bool enabled)
+    {
+        ImGui.SetCursorScreenPos(pos);
+        var clicked = ImGui.InvisibleButton(id, new Vector2(size, size));
+        DrawGlyph(pos, size, glyph, enabled ? 0.95f : 0.3f);
+        return enabled && clicked;
+    }
+
+    public static bool DrawCircleIcon(string id, VanillaPart? part, VanillaRect rect, VanillaGlyph fallback)
+    {
+        ImGui.SetCursorScreenPos(rect.Min);
+        var clicked = ImGui.InvisibleButton(id, rect.Size);
+        var hovered = ImGui.IsItemHovered();
+        var tint = hovered ? new Vector4(1.2f, 1.2f, 1.2f, 1f) : Vector4.One;
+        Catalog.EnsureLoaded();
+        if (!Drawer.Draw(ImGui.GetWindowDrawList(), part, rect.Min, rect.Max, 1f, tint))
+        {
+            DrawRoundFace(rect.Min, rect.W, hovered, 1f);
+            DrawGlyph(rect.Min, rect.W, fallback);
+        }
+
+        return clicked;
+    }
+
+    private static bool _gripDragging;
+    private static Vector2 _gripDragStartMouse;
+    private static Vector2 _gripDragStartSize;
+    private static Vector2 _gripDragStartPos;
+
+    public static void DrawGrip(VanillaFrame frame)
+    {
+        Catalog.EnsureLoaded();
+        var rect = frame.Grip;
+        var drawList = ImGui.GetWindowDrawList();
+        var under = Drawer.Draw(drawList, Catalog.ResizeUnder, rect.Min, rect.Max, 1f);
+        var over = Drawer.Draw(drawList, Catalog.ResizeGrip, rect.Min, rect.Max, 1f);
+        if (!under && !over)
+        {
+            var color = ImGui.GetColorU32(new Vector4(0.87f, 0.62f, 0.1f, 0.9f));
+            var max = rect.Max;
+            var scale = frame.Scale;
+            for (var i = 0; i < 3; i++)
+            {
+                var offset = (i + 1) * 4f * scale;
+                drawList.AddLine(new Vector2(max.X - offset, rect.Y + 2f * scale), new Vector2(max.X - 2f * scale, rect.Y + offset), color, 1.4f);
+            }
+        }
+
+        // Node 1005 sits on the top-right of the log. Dragging it grows the window to the right and upward.
+        ImGui.SetCursorScreenPos(rect.Min);
+        ImGui.InvisibleButton("###vanilla-resize-grip", rect.Size);
+        if (ImGui.IsItemHovered() || _gripDragging)
+            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNesw);
+
+        var io = ImGui.GetIO();
+        if (ImGui.IsItemActivated())
+        {
+            _gripDragging = true;
+            _gripDragStartMouse = io.MousePos;
+            _gripDragStartSize = ImGui.GetWindowSize();
+            _gripDragStartPos = ImGui.GetWindowPos();
+        }
+
+        if (!_gripDragging)
+            return;
+
+        if (!io.MouseDown[0])
+        {
+            _gripDragging = false;
+            return;
+        }
+
+        if (ImGui.IsWindowDocked())
+            return;
+
+        var delta = io.MousePos - _gripDragStartMouse;
+        var minimum = new Vector2(280f, 168f) * frame.Scale;
+        var newW = Math.Max(minimum.X, _gripDragStartSize.X + delta.X);
+        var newH = Math.Max(minimum.Y, _gripDragStartSize.Y - delta.Y);
+        ImGui.SetWindowPos(new Vector2(_gripDragStartPos.X, _gripDragStartPos.Y + _gripDragStartSize.Y - newH));
+        ImGui.SetWindowSize(new Vector2(newW, newH));
+    }
+
+    public static void BeginScrollDrag(VanillaRect track)
+    {
+        var io = ImGui.GetIO();
+        var over = io.MousePos.X >= track.X && io.MousePos.X <= track.X + track.W
+                   && io.MousePos.Y >= track.Y && io.MousePos.Y <= track.Y + track.H;
+        if (!io.MouseDown[0])
+        {
+            _scrollDragging = false;
+            _scrollDragFraction = null;
+            return;
+        }
+
+        if (!_scrollDragging && over && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+            _scrollDragging = true;
+        if (!_scrollDragging || _scrollMax <= 1f)
+            return;
+
+        var thumbH = ThumbHeight(track.H);
+        var travel = Math.Max(1f, track.H - thumbH);
+        _scrollDragFraction = Math.Clamp((io.MousePos.Y - track.Y - thumbH * 0.5f) / travel, 0f, 1f);
+    }
+
+    public static void NoteScroll()
+    {
+        _scrollView = Math.Max(1f, ImGui.GetWindowHeight());
+        _scrollMax = ImGui.GetScrollMaxY();
+        if (_scrollDragFraction is float fraction)
+            ImGui.SetScrollY(fraction * _scrollMax);
+        _scrollY = ImGui.GetScrollY();
+    }
+
+    public static void PaintScrollbar(VanillaRect track)
+    {
+        Catalog.EnsureLoaded();
+        var drawList = ImGui.GetWindowDrawList();
+        if (!Drawer.Draw(drawList, Catalog.ScrollTrack, track.Min, track.Max, 1f))
+            drawList.AddRectFilled(track.Min, track.Max, ImGui.GetColorU32(new Vector4(0.55f, 0.4f, 0.12f, 0.45f)), track.W * 0.3f);
+
+        if (_scrollMax <= 1f)
+            return;
+
+        var thumbH = ThumbHeight(track.H);
+        var travel = Math.Max(1f, track.H - thumbH);
+        var thumbY = track.Y + travel * Math.Clamp(_scrollY / _scrollMax, 0f, 1f);
+        var thumbMin = new Vector2(track.X, thumbY);
+        var thumbMax = thumbMin + new Vector2(track.W, thumbH);
+        if (!Drawer.Draw(drawList, Catalog.ScrollThumb, thumbMin, thumbMax, 1f))
+            drawList.AddRectFilled(thumbMin, thumbMax, ImGui.GetColorU32(new Vector4(0.95f, 0.95f, 0.9f, 0.85f)), track.W * 0.3f);
+    }
+
+    private static float ThumbHeight(float trackH)
+    {
+        var ratio = _scrollView / (_scrollView + Math.Max(1f, _scrollMax));
+        return Math.Clamp(trackH * ratio, Math.Min(trackH, trackH * 0.18f), trackH);
     }
 
     private sealed class EmptyDispose : IDisposable

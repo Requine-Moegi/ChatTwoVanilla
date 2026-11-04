@@ -25,6 +25,7 @@ public sealed class VanillaPart
     public short Right { get; init; }
     public short Bottom { get; init; }
     public bool IsNineGrid { get; init; }
+    public bool FlipH { get; init; }
     public float NodeAlpha { get; init; } = 1f;
     public Vector3 Multiply { get; init; } = Vector3.One;
     public string Source { get; init; } = "";

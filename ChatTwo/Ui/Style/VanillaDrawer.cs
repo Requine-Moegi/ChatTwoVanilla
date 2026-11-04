@@ -87,7 +87,11 @@ public sealed class VanillaDrawer
         var destH = max.Y - min.Y;
         if (!part.IsNineGrid || part.Left <= 0 && part.Right <= 0 && part.Top <= 0 && part.Bottom <= 0)
         {
-            drawList.AddImage(tex.Handle, min, max, Uv(part.U, part.V), Uv(part.U + part.W, part.V + part.H), color);
+            float u0 = part.U;
+            float u1 = part.U + part.W;
+            if (part.FlipH)
+                (u0, u1) = (u1, u0);
+            drawList.AddImage(tex.Handle, min, max, Uv(u0, part.V), Uv(u1, part.V + part.H), color);
             return;
         }
 

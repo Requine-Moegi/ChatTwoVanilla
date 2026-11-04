@@ -42,6 +42,10 @@ public sealed class VanillaUldCatalog
     public VanillaPart? ScrollTrack { get; private set; }
     public VanillaPart? ScrollThumb { get; private set; }
     public VanillaPart? ResizeGrip { get; private set; }
+    public VanillaPart? ResizeUnder { get; private set; }
+    public VanillaPart? ButtonPlus { get; private set; }
+    public VanillaPart? ButtonGear { get; private set; }
+    public VanillaPart? ButtonClose { get; private set; }
     public string Summary { get; private set; } = "Vanilla ULD catalog has not been loaded.";
     public IReadOnlyList<string> TexturePaths { get; private set; } = [];
 
@@ -68,7 +72,8 @@ public sealed class VanillaUldCatalog
     {
         Background = TabInactive = TabActive = TabBarStart = TabBarEnd = null;
         InputBackground = ChannelIcon = TabDot = CircleButton = null;
-        ScrollTrack = ScrollThumb = ResizeGrip = null;
+        ScrollTrack = ScrollThumb = ResizeGrip = ResizeUnder = null;
+        ButtonPlus = ButtonGear = ButtonClose = null;
 
         var widgetNines = new List<Found>();
         var widgetImages = new List<Found>();
@@ -80,6 +85,7 @@ public sealed class VanillaUldCatalog
         var buttonInstances = new List<(UldNode Node, UldFile File, UldComponent.ComponentType Type)>();
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var notes = new StringBuilder();
+        var loaded = new Dictionary<string, UldFile>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var path in UldPaths)
         {
@@ -107,6 +113,7 @@ public sealed class VanillaUldCatalog
                 continue;
             }
 
+            loaded[path] = file;
             notes.AppendLine($"loaded {path} assets={file.AssetData?.Length ?? 0} parts={file.Parts?.Length ?? 0} components={file.Components?.Length ?? 0} nodes={file.WidgetData.Nodes?.Length ?? 0} themeSupport={file.WidgetData.AssetsHaveThemeSupport}");
 
             if (file.AssetData != null)
@@ -159,7 +166,7 @@ public sealed class VanillaUldCatalog
             }
         }
 
-        AssignParts(shell, widgetNines, widgetImages, tabParts, inputParts, scrollParts, buttonParts, buttonInstances);
+        BindKnownParts(loaded, notes);
 
         TexturePaths = paths.Order(StringComparer.OrdinalIgnoreCase).ToArray();
         Summary = BuildSummary(notes);
@@ -183,7 +190,11 @@ public sealed class VanillaUldCatalog
         report.AppendLine("circle button: " + (CircleButton?.Describe() ?? "(none)"));
         report.AppendLine("scroll track: " + (ScrollTrack?.Describe() ?? "(none)"));
         report.AppendLine("scroll thumb: " + (ScrollThumb?.Describe() ?? "(none)"));
+        report.AppendLine("resize under: " + (ResizeUnder?.Describe() ?? "(none)"));
         report.AppendLine("resize: " + (ResizeGrip?.Describe() ?? "(none)"));
+        report.AppendLine("plus: " + (ButtonPlus?.Describe() ?? "(none)"));
+        report.AppendLine("gear: " + (ButtonGear?.Describe() ?? "(none)"));
+        report.AppendLine("close: " + (ButtonClose?.Describe() ?? "(none)"));
         report.AppendLine("textures:");
         foreach (var path in TexturePaths)
             report.AppendLine("  " + path);
@@ -453,6 +464,119 @@ public sealed class VanillaUldCatalog
         UldComponent.ComponentType.Button or UldComponent.ComponentType.HoldButton => "button",
         _ => "",
     };
+
+    /// <summary>
+    /// Parts are the ones named by ChatLog.uld / ChatLogPanel.uld, not a size heuristic.
+    /// ChatLog part list 1 is ChatLog.tex, list 2 is CircleButtons.tex.
+    /// ChatLogPanel part list 1 is ScrollBarB.tex.
+    /// </summary>
+    private void BindKnownParts(Dictionary<string, UldFile> loaded, StringBuilder notes)
+    {
+        if (!loaded.TryGetValue("ui/uld/ChatLog.uld", out var chat))
+        {
+            notes.AppendLine("known parts skipped: ChatLog.uld did not load");
+            return;
+        }
+
+        // Node 14: log panel, alpha 127, nine-grid 20.
+        Background = Take(chat, 1, 12, true, 20, 20, 20, 20, 127f / 255f, false, "node14 log");
+        // TextInput 1012 node 17.
+        InputBackground = Take(chat, 1, 17, true, 13, 13, 13, 13, 1f, false, "node17 input");
+        // Tab 1011 node 5. The same face is used for every tab; the marker distinguishes the active one.
+        var tab = Take(chat, 1, 7, true, 8, 8, 8, 8, 1f, false, "node5 tab");
+        TabInactive = tab;
+        TabActive = tab;
+        TabDot = Take(chat, 1, 9, false, 0, 0, 0, 0, 1f, false, "node2 marker");
+        TabBarStart = Take(chat, 1, 6, false, 0, 0, 0, 0, 1f, false, "node6 left cap");
+        // Node 8 wrap mode 1 mirrors the cap.
+        TabBarEnd = Take(chat, 1, 15, false, 0, 0, 0, 0, 1f, true, "node8 right cap");
+        ResizeUnder = Take(chat, 1, 3, false, 0, 0, 0, 0, 204f / 255f, false, "node1005 grip");
+        ResizeGrip = Take(chat, 1, 4, false, 0, 0, 0, 0, 1f, false, "node1005 grip lines");
+        ButtonPlus = Take(chat, 2, 8, false, 0, 0, 0, 0, 1f, false, "button 1001 plus");
+        ButtonGear = Take(chat, 2, 0, false, 0, 0, 0, 0, 1f, false, "button 1004 gear");
+        ButtonClose = Take(chat, 2, 24, false, 0, 0, 0, 0, 1f, false, "button 1003 close");
+        ChannelIcon = Take(chat, 2, 5, false, 0, 0, 0, 0, 1f, false, "dropdown 1008 bubble");
+        CircleButton = ButtonGear;
+
+        if (loaded.TryGetValue("ui/uld/ChatLogPanel.uld", out var panel))
+        {
+            // ScrollBar 1003. Track is part 0 (offsets 4,5,5,5), thumb is part 1 (5,5,6,5).
+            ScrollTrack = Take(panel, 1, 0, true, 4, 5, 5, 5, 1f, false, "scrollbar track");
+            ScrollThumb = Take(panel, 1, 1, true, 5, 5, 6, 5, 1f, false, "scrollbar thumb");
+        }
+        else
+        {
+            notes.AppendLine("scrollbar skipped: ChatLogPanel.uld did not load");
+        }
+    }
+
+    private static VanillaPart? Take(
+        UldFile file,
+        uint listId,
+        uint partId,
+        bool nine,
+        short left,
+        short top,
+        short right,
+        short bottom,
+        float alpha,
+        bool flipH,
+        string source)
+    {
+        if (file.Parts == null || file.AssetData == null)
+            return null;
+
+        Lumina.Data.Parsing.Uld.UldRoot.PartsData? list = null;
+        foreach (var candidate in file.Parts)
+        {
+            if (candidate.Id != listId)
+                continue;
+            list = candidate;
+            break;
+        }
+
+        if (list == null || list.Value.Parts == null || partId >= list.Value.Parts.Length)
+            return null;
+
+        var rect = list.Value.Parts[partId];
+        string? texture = null;
+        byte mask = 0;
+        foreach (var asset in file.AssetData)
+        {
+            if (asset.Id != rect.TextureId)
+                continue;
+            texture = Clean(asset.Path);
+            mask = asset.ThemeSupportBitmask;
+            break;
+        }
+
+        if (string.IsNullOrWhiteSpace(texture) || rect.W == 0 || rect.H == 0)
+            return null;
+
+        return new VanillaPart
+        {
+            BasePath = texture,
+            ThemeMask = mask,
+            AssetsHaveThemeSupport = file.WidgetData.AssetsHaveThemeSupport,
+            U = rect.U,
+            V = rect.V,
+            W = rect.W,
+            H = rect.H,
+            Left = left,
+            Top = top,
+            Right = right,
+            Bottom = bottom,
+            PartListId = (int)listId,
+            PartId = (int)partId,
+            NodeW = rect.W,
+            NodeH = rect.H,
+            IsNineGrid = nine,
+            FlipH = flipH,
+            NodeAlpha = alpha,
+            Multiply = Vector3.One,
+            Source = source,
+        };
+    }
 
     /// <summary>
     /// Picks parts by the component type stored in the ULD (text input, tab, button, scrollbar)
