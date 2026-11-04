@@ -6,6 +6,7 @@ using ChatTwo.Ui.Handler;
 using ChatTwo.Ui.Style;
 using ChatTwo.Util;
 using Dalamud.Interface.Style;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
@@ -119,20 +120,15 @@ public class Popout : Window, IChatWindow
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows))
             LastActivityTime = FrameTime;
 
-        var chromeAlpha = Tab.IndependentOpacity ? Tab.Opacity / 100f : VanillaGameLook.LogBackgroundAlpha();
         if (ChatChrome.Enabled)
         {
-            ChatChrome.DrawWindowBackground(chromeAlpha);
-
-            var tabH = ChatChrome.TabHeight;
-            var width = ImGui.GetContentRegionAvail().X;
-            var pos = ImGui.GetCursorScreenPos();
-            ChatChrome.DrawTab(pos, new Vector2(width, tabH), true, false);
-            var textSize = ImGui.CalcTextSize(Tab.Name);
-            VanillaText.DrawAt(pos + (new Vector2(width, tabH) - textSize) * 0.5f, Tab.Name, Vector4.One);
-            ImGui.Dummy(new Vector2(width, tabH));
+            var chromeAlpha = Tab.IndependentOpacity ? Tab.Opacity / 100f : VanillaGameLook.LogBackgroundAlpha();
+            var inputAlpha = Tab.IndependentOpacity ? chromeAlpha : VanillaGameLook.LogInputAlpha();
+            DrawVanillaPopout(chromeAlpha, inputAlpha);
+            return;
         }
-        else if (!Plugin.Config.ShowPopOutTitleBar)
+
+        if (!Plugin.Config.ShowPopOutTitleBar)
         {
             ImGui.TextUnformatted(Tab.Name);
             ImGui.Separator();
@@ -145,24 +141,11 @@ public class Popout : Window, IChatWindow
         Plugin.ChatLog.DrawMessageLog(Tab, InputHandler.PayloadHandler, remainingHeight, false);
 
         if (!Tab.SupportsInput)
-        {
-            if (ChatChrome.Enabled && Tab.CanResize)
-                ChatChrome.DrawResizeGrip(ImGui.GetWindowPos(), ImGui.GetWindowSize());
             return;
-        }
 
         // This tab has a fixed channel, so we force this channel to be always set as current
         if (Tab.Channel is not null)
             Tab.CurrentChannel.SetChannel(Tab.Channel.Value);
-
-        if (ChatChrome.Enabled)
-        {
-            var inputAlpha = Tab.IndependentOpacity ? chromeAlpha : VanillaGameLook.LogInputAlpha();
-            ChatChrome.DrawInputBar(
-                ImGui.GetCursorScreenPos(),
-                new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetFrameHeight()),
-                inputAlpha);
-        }
 
         using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, Vector2.Zero))
             Plugin.ChatLog.DrawChannelName(Tab);
@@ -187,9 +170,101 @@ public class Popout : Window, IChatWindow
 
         var tellSpecial = false;
         InputHandler.DrawInputArea(Tab, ImGui.GetContentRegionAvail().X, ref tellSpecial);
+    }
 
-        if (ChatChrome.Enabled && Tab.CanResize)
+    private void DrawVanillaPopout(float chromeAlpha, float inputAlpha)
+    {
+        ChatChrome.DrawWindowBackground(chromeAlpha);
+
+        var gap = ChatChrome.ChromeGap;
+        var tabH = ChatChrome.TabRowHeight;
+        var inputBlock = Tab.SupportsInput ? ChatChrome.InputBlockHeight + gap : 0f;
+        var contentMin = ImGui.GetCursorScreenPos();
+        var avail = ImGui.GetContentRegionAvail();
+        var tabRowY = contentMin.Y + avail.Y - tabH;
+        var messageH = tabRowY - contentMin.Y - inputBlock;
+        if (messageH < 1f)
+            messageH = 1f;
+
+        Plugin.ChatLog.DrawMessageLog(Tab, InputHandler.PayloadHandler, messageH, false);
+
+        if (Tab.SupportsInput)
+        {
+            if (Tab.Channel is not null)
+                Tab.CurrentChannel.SetChannel(Tab.Channel.Value);
+
+            var tellSpecial = false;
+            ImGui.SetCursorScreenPos(new Vector2(contentMin.X, tabRowY - inputBlock));
+            Plugin.ChatLog.DrawVanillaChannelAndInput(
+                Tab,
+                ChatChannelPicker,
+                false,
+                GetValidPopupChannels(),
+                channel => Tab.CurrentChannel.SetChannel(channel),
+                InputHandler,
+                avail.X,
+                inputAlpha,
+                ref tellSpecial);
+        }
+
+        DrawVanillaPopoutStrip(contentMin.X, tabRowY, avail.X, tabH);
+
+        if (Tab.CanResize)
             ChatChrome.DrawResizeGrip(ImGui.GetWindowPos(), ImGui.GetWindowSize());
+    }
+
+    private void DrawVanillaPopoutStrip(float x, float y, float width, float rowH)
+    {
+        var scale = ImGuiHelpers.GlobalScale;
+        var buttonGap = 3f * scale;
+        var button = ChatChrome.ButtonSize;
+        var tabH = ChatChrome.TabHeight;
+        var gripReserve = Tab.CanResize ? 10f * scale : 0f;
+        var buttonCount = Tab.SupportsInput ? 3 : 2;
+        var buttonsWidth = buttonCount * button + (buttonCount - 1) * buttonGap;
+        var buttonsX = x + width - gripReserve - buttonsWidth;
+        var tabW = Math.Clamp(ImGui.CalcTextSize(Tab.Name).X + 18f * scale, 52f * scale, Math.Max(52f * scale, buttonsX - buttonGap - x));
+        var tabPos = new Vector2(x, y + (rowH - tabH) * 0.5f);
+        var tabSize = new Vector2(tabW, tabH);
+
+        ChatChrome.DrawTabCaps(tabPos, tabW, tabH);
+        ImGui.SetCursorScreenPos(tabPos);
+        ImGui.InvisibleButton("###popout-tab", tabSize);
+        ChatChrome.DrawTab(tabPos, tabSize, true, ImGui.IsItemHovered());
+        ChatChrome.DrawActiveDot(tabPos, tabSize, false);
+
+        var textSize = ImGui.CalcTextSize(Tab.Name);
+        var textPos = tabPos + new Vector2((tabSize.X - textSize.X) * 0.5f, (tabSize.Y - textSize.Y) * 0.5f);
+        var drawList = ImGui.GetWindowDrawList();
+        var clipPad = 6f * scale;
+        drawList.PushClipRect(tabPos + new Vector2(clipPad, 0f), tabPos + tabSize - new Vector2(clipPad, 0f), true);
+        VanillaText.DrawAt(textPos, Tab.Name, Vector4.One);
+        drawList.PopClipRect();
+
+        var buttonY = y + (rowH - button) * 0.5f;
+        var slot = 0;
+        ImGui.SetCursorScreenPos(new Vector2(buttonsX + slot * (button + buttonGap), buttonY));
+        if (ChatChrome.RoundButton("###popout-settings", ChatChrome.VanillaGlyph.Gear, button))
+            Plugin.SettingsWindow.Toggle();
+        if (ImGui.IsItemHovered())
+            ImGuiUtil.Tooltip(string.Format(Language.Settings_Title, Plugin.PluginName));
+        slot++;
+
+        if (Tab.SupportsInput)
+        {
+            ImGui.SetCursorScreenPos(new Vector2(buttonsX + slot * (button + buttonGap), buttonY));
+            if (ChatChrome.RoundButton("###popout-focus", ChatChrome.VanillaGlyph.Cursor, button))
+                InputHandler.Activate = true;
+            if (ImGui.IsItemHovered())
+                ImGuiUtil.Tooltip(Language.ChatLog_FocusInput);
+            slot++;
+        }
+
+        ImGui.SetCursorScreenPos(new Vector2(buttonsX + slot * (button + buttonGap), buttonY));
+        if (ChatChrome.RoundButton("###popout-close", ChatChrome.VanillaGlyph.Close, button))
+            OnClose();
+        if (ImGui.IsItemHovered())
+            ImGuiUtil.Tooltip(Language.ChatLog_Tabs_Dock);
     }
 
     public override void PostDraw()
@@ -204,6 +279,7 @@ public class Popout : Window, IChatWindow
 
     public override void OnClose()
     {
+        IsOpen = false;
         Plugin.ChatLog.PopOutWindows.Remove(Tab.Identifier);
         Plugin.WindowSystem.RemoveWindow(this);
 

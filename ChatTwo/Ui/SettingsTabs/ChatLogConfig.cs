@@ -33,6 +33,8 @@ public sealed class ChatLogConfig : ISettingsTab
             ImGui.Spacing();
 
             ImGuiUtil.OptionCheckbox(ref Mutable.SidebarTabView, Language.Options_SidebarTabView_Name, string.Format(Language.Options_SidebarTabView_Description, Plugin.PluginName));
+            if (Mutable.VanillaStyle)
+                ImGuiUtil.HelpText(Language.Options_VanillaStyle_SidebarIgnored);
             ImGui.Spacing();
 
             ImGuiUtil.OptionCheckbox(ref Mutable.ShowNoviceNetwork, Language.Options_ShowNoviceNetwork_Name, Language.Options_ShowNoviceNetwork_Description);

@@ -36,6 +36,9 @@ public sealed class VanillaUldCatalog
     public VanillaPart? TabBarStart { get; private set; }
     public VanillaPart? TabBarEnd { get; private set; }
     public VanillaPart? InputBackground { get; private set; }
+    public VanillaPart? ChannelIcon { get; private set; }
+    public VanillaPart? TabDot { get; private set; }
+    public VanillaPart? CircleButton { get; private set; }
     public VanillaPart? ScrollTrack { get; private set; }
     public VanillaPart? ScrollThumb { get; private set; }
     public VanillaPart? ResizeGrip { get; private set; }
@@ -64,13 +67,16 @@ public sealed class VanillaUldCatalog
     private void Load()
     {
         Background = TabInactive = TabActive = TabBarStart = TabBarEnd = null;
-        InputBackground = ScrollTrack = ScrollThumb = ResizeGrip = null;
+        InputBackground = ChannelIcon = TabDot = CircleButton = null;
+        ScrollTrack = ScrollThumb = ResizeGrip = null;
 
         var widgetNines = new List<Found>();
         var widgetImages = new List<Found>();
         var tabParts = new List<Found>();
         var inputParts = new List<Found>();
         var scrollParts = new List<Found>();
+        var buttonParts = new List<Found>();
+        var shell = new List<ShellNode>();
         var buttonInstances = new List<(UldNode Node, UldFile File, UldComponent.ComponentType Type)>();
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var notes = new StringBuilder();
@@ -118,13 +124,24 @@ public sealed class VanillaUldCatalog
             {
                 foreach (var node in file.WidgetData.Nodes)
                 {
-                    CollectGraphic(file, node, "widget", widgetNines, widgetImages, tabParts, inputParts, scrollParts);
-                    if (node.NodeType > 1000)
+                    CollectGraphic(file, node, "widget", widgetNines, widgetImages, tabParts, inputParts, scrollParts, buttonParts);
+                    UldComponent.ComponentType? componentType = null;
+                    if (node.Node is not UldImage and not UldNine)
                     {
                         var component = FindComponent(components, (uint)node.NodeType);
                         if (component != null)
+                        {
+                            componentType = component.Value.Type;
                             buttonInstances.Add((node, file, component.Value.Type));
+                            notes.AppendLine($"node {node.NodeId} component={component.Value.Type} id={component.Value.Id} {node.W}x{node.H}@{node.X},{node.Y}");
+                        }
                     }
+                    else
+                    {
+                        notes.AppendLine($"node {node.NodeId} graphic={node.NodeType} {node.W}x{node.H}@{node.X},{node.Y}");
+                    }
+
+                    shell.Add(new ShellNode(path, node, componentType));
                 }
             }
 
@@ -138,16 +155,11 @@ public sealed class VanillaUldCatalog
                     continue;
 
                 foreach (var node in component.Nodes)
-                    CollectGraphic(file, node, role, widgetNines, widgetImages, tabParts, inputParts, scrollParts);
+                    CollectGraphic(file, node, role, widgetNines, widgetImages, tabParts, inputParts, scrollParts, buttonParts);
             }
         }
 
-        Background = Largest(widgetNines) ?? Largest(widgetNines.Concat(inputParts).Concat(tabParts));
-        (TabInactive, TabActive) = PickTabPair(tabParts);
-        (TabBarStart, TabBarEnd) = PickCaps(widgetImages);
-        InputBackground = Largest(inputParts);
-        (ScrollTrack, ScrollThumb) = PickScroll(scrollParts);
-        ResizeGrip = PickResize(buttonInstances);
+        AssignParts(shell, widgetNines, widgetImages, tabParts, inputParts, scrollParts, buttonParts, buttonInstances);
 
         TexturePaths = paths.Order(StringComparer.OrdinalIgnoreCase).ToArray();
         Summary = BuildSummary(notes);
@@ -166,6 +178,9 @@ public sealed class VanillaUldCatalog
         report.AppendLine("tab cap start: " + (TabBarStart?.Describe() ?? "(none)"));
         report.AppendLine("tab cap end: " + (TabBarEnd?.Describe() ?? "(none)"));
         report.AppendLine("input: " + (InputBackground?.Describe() ?? "(none)"));
+        report.AppendLine("channel icon: " + (ChannelIcon?.Describe() ?? "(none)"));
+        report.AppendLine("tab dot: " + (TabDot?.Describe() ?? "(none)"));
+        report.AppendLine("circle button: " + (CircleButton?.Describe() ?? "(none)"));
         report.AppendLine("scroll track: " + (ScrollTrack?.Describe() ?? "(none)"));
         report.AppendLine("scroll thumb: " + (ScrollThumb?.Describe() ?? "(none)"));
         report.AppendLine("resize: " + (ResizeGrip?.Describe() ?? "(none)"));
@@ -183,7 +198,8 @@ public sealed class VanillaUldCatalog
         List<Found> widgetImages,
         List<Found> tabParts,
         List<Found> inputParts,
-        List<Found> scrollParts)
+        List<Found> scrollParts,
+        List<Found> buttonParts)
     {
         if (!TryMakePart(file, node, role, out var part))
             return;
@@ -205,6 +221,9 @@ public sealed class VanillaUldCatalog
                 break;
             case "scroll":
                 scrollParts.Add(found);
+                break;
+            case "button":
+                buttonParts.Add(found);
                 break;
         }
     }
@@ -282,6 +301,10 @@ public sealed class VanillaUldCatalog
             Top = top,
             Right = right,
             Bottom = bottom,
+            PartListId = (int)listId,
+            PartId = (int)partId,
+            NodeW = node.W,
+            NodeH = node.H,
             IsNineGrid = nine,
             NodeAlpha = node.Alpha == 0 ? 1f : node.Alpha / 255f,
             Multiply = new Vector3(Norm(node.MultiplyRed), Norm(node.MultiplyGreen), Norm(node.MultiplyBlue)),
@@ -327,19 +350,6 @@ public sealed class VanillaUldCatalog
         }
 
         return (inactive ?? distinct[0], active ?? distinct[0]);
-    }
-
-    private static (VanillaPart? Start, VanillaPart? End) PickCaps(List<Found> images)
-    {
-        var caps = images
-            .Where(found => found.Node.H is > 0 and <= 48 && found.Node.W is > 0 and <= 80 && found.Node.Y <= 24)
-            .OrderBy(found => found.Node.X)
-            .ToList();
-        if (caps.Count == 0)
-            return (null, null);
-        if (caps.Count == 1)
-            return (caps[0].Part, null);
-        return (caps[0].Part, caps[^1].Part);
     }
 
     private static (VanillaPart? Track, VanillaPart? Thumb) PickScroll(List<Found> parts)
@@ -440,8 +450,98 @@ public sealed class VanillaUldCatalog
         UldComponent.ComponentType.Tabbed => "tab",
         UldComponent.ComponentType.TextInput => "input",
         UldComponent.ComponentType.ScrollBar => "scroll",
+        UldComponent.ComponentType.Button or UldComponent.ComponentType.HoldButton => "button",
         _ => "",
     };
+
+    /// <summary>
+    /// Picks parts by the component type stored in the ULD (text input, tab, button, scrollbar)
+    /// and by that node's part index. Geometry is only used to tell a row of tabs from the
+    /// corner grip, and the chosen part index is written into the debugger summary.
+    /// </summary>
+    private void AssignParts(
+        List<ShellNode> shell,
+        List<Found> widgetNines,
+        List<Found> widgetImages,
+        List<Found> tabParts,
+        List<Found> inputParts,
+        List<Found> scrollParts,
+        List<Found> buttonParts,
+        List<(UldNode Node, UldFile File, UldComponent.ComponentType Type)> buttonInstances)
+    {
+        var chatShell = shell.Where(entry => entry.Path.EndsWith("ChatLog.uld", StringComparison.OrdinalIgnoreCase)).ToList();
+        if (chatShell.Count == 0)
+            chatShell = shell;
+
+        var framed = widgetNines.Where(found => found.Part.Left + found.Part.Right + found.Part.Top + found.Part.Bottom > 0).ToList();
+        var chatNines = framed.Count > 0 ? framed : widgetNines;
+        Background = Largest(chatNines.Where(found => found.Part.Source.Contains("ChatLog.uld", StringComparison.OrdinalIgnoreCase)))
+                     ?? Largest(chatNines);
+
+        InputBackground = Largest(inputParts.Where(found => found.Part.IsNineGrid)) ?? Largest(inputParts);
+
+        var faces = tabParts.Where(found => found.Part.W >= 12 && found.Part.H >= 12).ToList();
+        var dots = tabParts.Where(found => found.Part.W is > 0 and <= 16 && found.Part.H is > 0 and <= 16).ToList();
+        TabDot = dots.Count > 0 ? dots.OrderBy(found => found.Part.W * found.Part.H).First().Part : null;
+        (TabInactive, TabActive) = PickTabPair(faces.Count > 0 ? faces : tabParts);
+
+        ChannelIcon = PickChannelIcon(chatShell, widgetImages);
+        (TabBarStart, TabBarEnd) = PickCaps(chatShell, widgetImages);
+        CircleButton = Largest(buttonParts.Where(found => found.Part.IsNineGrid))
+                       ?? Largest(buttonParts.Where(found => Math.Abs(found.Part.W - found.Part.H) <= 8));
+        (ScrollTrack, ScrollThumb) = PickScroll(scrollParts);
+        ResizeGrip = PickResize(buttonInstances);
+    }
+
+    private static VanillaPart? PickChannelIcon(List<ShellNode> shell, List<Found> images)
+    {
+        var inputs = shell.Where(entry => entry.Type == UldComponent.ComponentType.TextInput)
+            .OrderByDescending(entry => entry.Node.W)
+            .ToList();
+        if (inputs.Count == 0)
+            return null;
+
+        var host = inputs[0];
+        VanillaPart? best = null;
+        var bestArea = int.MaxValue;
+        foreach (var image in images)
+        {
+            if (!image.Part.Source.Contains(host.Path, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (image.Node.H is < 8 or > 40 || image.Node.W is < 8 or > 40)
+                continue;
+            var verticallyNear = image.Node.Y + image.Node.H > host.Node.Y - 8 && image.Node.Y < host.Node.Y + host.Node.H + 8;
+            var onTheLeft = image.Node.X + image.Node.W <= host.Node.X + 8;
+            if (!verticallyNear || !onTheLeft)
+                continue;
+            var area = image.Node.W * image.Node.H;
+            if (area >= bestArea)
+                continue;
+            bestArea = area;
+            best = image.Part;
+        }
+
+        return best;
+    }
+
+    private static (VanillaPart? Start, VanillaPart? End) PickCaps(List<ShellNode> shell, List<Found> images)
+    {
+        var bottom = 0;
+        foreach (var entry in shell)
+            bottom = Math.Max(bottom, entry.Node.Y + entry.Node.H);
+        var minY = bottom * 0.55f;
+        var caps = images
+            .Where(found => found.Node.H is > 0 and <= 48 && found.Node.W is > 0 and <= 80 && found.Node.Y >= minY)
+            .OrderBy(found => found.Node.X)
+            .ToList();
+        if (caps.Count == 0)
+            return (null, null);
+        if (caps.Count == 1)
+            return (caps[0].Part, null);
+        return (caps[0].Part, caps[^1].Part);
+    }
+
+    private readonly record struct ShellNode(string Path, UldNode Node, UldComponent.ComponentType? Type);
 
     private static float Norm(short value)
     {

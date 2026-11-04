@@ -4172,5 +4172,32 @@ namespace ChatTwo.Resources {
                 return ResourceManager.GetString("Options_VanillaStyle_OverrideIgnored", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to While vanilla style is on, tabs stay on the bottom strip.
+        /// </summary>
+        internal static string Options_VanillaStyle_SidebarIgnored {
+            get {
+                return ResourceManager.GetString("Options_VanillaStyle_SidebarIgnored", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Focus chat input.
+        /// </summary>
+        internal static string ChatLog_FocusInput {
+            get {
+                return ResourceManager.GetString("ChatLog_FocusInput", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Return to the main window.
+        /// </summary>
+        internal static string ChatLog_Tabs_Dock {
+            get {
+                return ResourceManager.GetString("ChatLog_Tabs_Dock", resourceCulture);
+            }
+        }
     }
 }

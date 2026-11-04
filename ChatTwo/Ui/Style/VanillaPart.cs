@@ -12,10 +12,14 @@ public sealed class VanillaPart
     public string BasePath { get; init; } = "";
     public byte ThemeMask { get; init; }
     public bool AssetsHaveThemeSupport { get; init; }
+    public int PartListId { get; init; }
+    public int PartId { get; init; }
     public ushort U { get; init; }
     public ushort V { get; init; }
     public ushort W { get; init; }
     public ushort H { get; init; }
+    public int NodeW { get; init; }
+    public int NodeH { get; init; }
     public short Left { get; init; }
     public short Top { get; init; }
     public short Right { get; init; }
@@ -26,5 +30,5 @@ public sealed class VanillaPart
     public string Source { get; init; } = "";
 
     public string Describe()
-        => $"{Source} {BasePath} uv=({U},{V},{W},{H}) slice=({Left},{Top},{Right},{Bottom}) themeMask={ThemeMask} themed={AssetsHaveThemeSupport}";
+        => $"{Source} {BasePath} partList={PartListId} part={PartId} uv=({U},{V},{W},{H}) node={NodeW}x{NodeH} slice=({Left},{Top},{Right},{Bottom}) themeMask={ThemeMask} themed={AssetsHaveThemeSupport}";
 }
