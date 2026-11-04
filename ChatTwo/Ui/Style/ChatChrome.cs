@@ -1,6 +1,7 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 
 namespace ChatTwo.Ui.Style;
 
@@ -471,8 +472,13 @@ public static class ChatChrome
     {
         ImGui.SetCursorScreenPos(pos);
         var clicked = ImGui.InvisibleButton(id, new Vector2(size, size));
-        var glyph = Math.Min(size, 16f * ImGuiHelpers.GlobalScale);
-        DrawGlyph(new Vector2(pos.X + (size - glyph) * 0.5f, pos.Y + (size - glyph) * 0.5f), glyph, left ? VanillaGlyph.Left : VanillaGlyph.Right, 0.95f);
+        // Part 15's opaque rounded cap inside the 28px sheet is x 7..28, y 3..26.
+        // The right cap is that sheet mirrored, so its visible center is mirrored too.
+        // The glyph is centered on that, not on the sprite's transparent padding.
+        var unit = size / 28f;
+        var center = (left ? new Vector2(17.5f, 14.5f) : new Vector2(10.5f, 14.5f)) * unit;
+        var glyph = 16f * unit;
+        DrawGlyph(pos + center - new Vector2(glyph * 0.5f, glyph * 0.5f), glyph, left ? VanillaGlyph.Left : VanillaGlyph.Right, 0.95f);
         return clicked;
     }
 
@@ -508,42 +514,64 @@ public static class ChatChrome
     public static void DrawGrip(VanillaFrame frame)
     {
         Catalog.EnsureLoaded();
-        var rect = frame.Grip;
-        // Submit the handle first so hover is known the same frame the textures are drawn.
-        ImGui.SetCursorScreenPos(rect.Min);
-        ImGui.InvisibleButton("###vanilla-resize-grip", rect.Size);
-        var hot = ImGui.IsItemHovered() || _gripDragging;
+        var sprite = frame.Grip;
+        // The message child covers most of this sprite and would otherwise take the hover.
+        // A later child sits above it. Hover, glow, and drag all use this same padded rect.
+        var pad = 4f * frame.Scale;
+        var hit = new VanillaRect(sprite.X - pad, sprite.Y - pad, sprite.W + pad * 2f, sprite.H + pad * 2f);
+        var parentPos = ImGui.GetWindowPos();
+        var parentSize = ImGui.GetWindowSize();
+
+        var hovered = false;
+        var activated = false;
+        ImGui.SetCursorScreenPos(hit.Min);
+        using (var hitWindow = ImRaii.Child(
+                   "###vanilla-grip-hit",
+                   hit.Size,
+                   false,
+                   ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoNav))
+        {
+            if (hitWindow)
+            {
+                ImGui.SetCursorPos(Vector2.Zero);
+                ImGui.InvisibleButton("###vanilla-resize-grip", ImGui.GetContentRegionAvail());
+                hovered = ImGui.IsItemHovered();
+                activated = ImGui.IsItemActivated();
+            }
+        }
+
+        var hot = hovered || _gripDragging;
         if (hot)
             ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNesw);
 
         var drawList = ImGui.GetWindowDrawList();
-        // Part 3 is the dim arrow. Part 4 is the bright stroke, and only shows while the pointer is on it.
+        // Part 3 is the dim arrow. Part 4 is the bright stroke, and only shows while the pointer is on the grip.
         var idle = new Vector4(0.55f, 0.55f, 0.55f, 1f);
-        var under = Drawer.Draw(drawList, Catalog.ResizeUnder, rect.Min, rect.Max, 1f, hot ? Vector4.One : idle);
-        var over = hot && Drawer.Draw(drawList, Catalog.ResizeGrip, rect.Min, rect.Max, 1f);
+        var under = Drawer.Draw(drawList, Catalog.ResizeUnder, sprite.Min, sprite.Max, 1f, hot ? Vector4.One : idle);
+        var over = hot && Drawer.Draw(drawList, Catalog.ResizeGrip, sprite.Min, sprite.Max, 1f);
         if (!under && !over)
         {
             var color = ImGui.GetColorU32(hot
                 ? new Vector4(0.95f, 0.78f, 0.28f, 0.95f)
                 : new Vector4(0.45f, 0.45f, 0.45f, 0.7f));
-            var max = rect.Max;
+            var max = sprite.Max;
             var scale = frame.Scale;
             for (var i = 0; i < 3; i++)
             {
                 var offset = (i + 1) * 4f * scale;
-                drawList.AddLine(new Vector2(max.X - offset, rect.Y + 2f * scale), new Vector2(max.X - 2f * scale, rect.Y + offset), color, 1.4f);
+                drawList.AddLine(new Vector2(max.X - offset, sprite.Y + 2f * scale), new Vector2(max.X - 2f * scale, sprite.Y + offset), color, 1.4f);
             }
         }
 
         // Top-right of the log. Dragging grows to the right and up, so the bottom-left corner stays put.
         // ImGui's own grip is disabled with NoResize while vanilla style is on.
         var io = ImGui.GetIO();
-        if (ImGui.IsItemActivated())
+        if (activated)
         {
             _gripDragging = true;
             _gripDragStartMouse = io.MousePos;
-            _gripDragStartSize = ImGui.GetWindowSize();
-            _gripDragStartPos = ImGui.GetWindowPos();
+            _gripDragStartSize = parentSize;
+            _gripDragStartPos = parentPos;
         }
 
         if (!_gripDragging)
