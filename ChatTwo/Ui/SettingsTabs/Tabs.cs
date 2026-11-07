@@ -90,6 +90,14 @@ public sealed class Tabs : ISettingsTab
 
             ImGui.InputText(Language.Options_Tabs_Name, ref tab.Name, 512, ImGuiInputTextFlags.EnterReturnsTrue);
             ImGui.Checkbox(Language.Options_Tabs_ShowTimestamps, ref tab.DisplayTimestamp);
+            ImGuiUtil.OptionCheckbox(ref tab.LogBackgroundTint, Language.Options_Tabs_LogBackground_Name, Language.Options_Tabs_LogBackground_Description);
+            if (tab.LogBackgroundTint)
+            {
+                var stored = tab.LogBackgroundColor == 0 ? 0xFFFFFFFFu : tab.LogBackgroundColor;
+                var color = ColourUtil.RgbaToVector3(stored);
+                if (ImGui.ColorEdit3("##tab-log-bg", ref color, ImGuiColorEditFlags.NoInputs))
+                    tab.LogBackgroundColor = ColourUtil.Vector3ToRgba(color);
+            }
             ImGui.Checkbox(Language.Options_Tabs_PopOut, ref tab.PopOut);
             if (tab.PopOut)
             {

@@ -75,5 +75,11 @@ public class DebuggerWindow : Window
         ImGui.TextColored(ImGuiColors.DalamudOrange, "Vanilla style");
         ChatChrome.Uld.EnsureLoaded();
         ImGui.TextWrapped(ChatChrome.Uld.Summary);
+
+        ImGuiHelpers.ScaledDummy(5.0f);
+        ImGui.TextColored(ImGuiColors.DalamudOrange, "Vanilla font");
+        ImGui.TextWrapped(Plugin.FontManager.DescribeVanillaFont());
+        using (Plugin.FontManager.PushVanillaAxisPreview())
+            ImGui.TextUnformatted($"Sample at {ImGui.GetFontSize():0.##} px: The quick brown fox jumps over the lazy dog.");
     }
 }

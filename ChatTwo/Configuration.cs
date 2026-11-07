@@ -140,6 +140,20 @@ public class Configuration : IPluginConfiguration
     /// </summary>
     public float InputChannelTint = 45f;
 
+    /// <summary>
+    /// When true, the vanilla log background follows the game's Log Window Transparency.
+    /// When false, <see cref="LogBackgroundOpacity"/> replaces that factor. Either way the
+    /// nine-grid node's own alpha is still multiplied, so 100% matches the game log at
+    /// full opacity rather than painting over the texture.
+    /// </summary>
+    public bool UseGameLogOpacity = true;
+
+    /// <summary>
+    /// 0–100. Opacity of the vanilla log background when <see cref="UseGameLogOpacity"/> is off.
+    /// 100 is the texture at its designed translucency. 0 is clear. The input bar is not affected.
+    /// </summary>
+    public float LogBackgroundOpacity = 100f;
+
     public ConfigKeyBind? ChatTabForward;
     public ConfigKeyBind? ChatTabBackward;
 
@@ -224,6 +238,8 @@ public class Configuration : IPluginConfiguration
         VanillaStyle = other.VanillaStyle;
         TintInputByChannel = other.TintInputByChannel;
         InputChannelTint = other.InputChannelTint;
+        UseGameLogOpacity = other.UseGameLogOpacity;
+        LogBackgroundOpacity = other.LogBackgroundOpacity;
         ChatTabForward = other.ChatTabForward;
         ChatTabBackward = other.ChatTabBackward;
         WebinterfaceEnabled = other.WebinterfaceEnabled;
@@ -283,6 +299,18 @@ public class Tab
 
     public bool CanMove = true;
     public bool CanResize = true;
+
+    /// <summary>
+    /// When true, the vanilla log background for this tab is multiplied by <see cref="LogBackgroundColor"/>.
+    /// Off leaves the game's log texture untinted. Saved with the tab and used in the main window and a pop-out.
+    /// </summary>
+    public bool LogBackgroundTint;
+
+    /// <summary>
+    /// RGB tint for the vanilla log background. White leaves the texture unchanged. 0 is treated as white
+    /// so a config saved before this field existed does not turn the log black the moment the tint is enabled.
+    /// </summary>
+    public uint LogBackgroundColor = 0xFFFFFFFF;
 
     public bool IndependentHide;
     public bool HideDuringCutscenes = true;
@@ -368,6 +396,8 @@ public class Tab
             CurrentChannel = CurrentChannel.Clone(),
             CanMove = CanMove,
             CanResize = CanResize,
+            LogBackgroundTint = LogBackgroundTint,
+            LogBackgroundColor = LogBackgroundColor,
             IndependentHide = IndependentHide,
             HideDuringCutscenes = HideDuringCutscenes,
             HideWhenNotLoggedIn = HideWhenNotLoggedIn,

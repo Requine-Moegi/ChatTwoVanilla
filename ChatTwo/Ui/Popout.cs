@@ -150,7 +150,7 @@ public class Popout : Window, IChatWindow
 
         if (ChatChrome.Enabled)
         {
-            var chromeAlpha = Tab.IndependentOpacity ? Tab.Opacity / 100f : VanillaGameLook.LogBackgroundAlpha();
+            var chromeAlpha = Tab.IndependentOpacity ? Tab.Opacity / 100f : VanillaGameLook.LogBackgroundOpacityFactor();
             var inputAlpha = Tab.IndependentOpacity ? chromeAlpha : VanillaGameLook.LogInputAlpha();
             DrawVanillaPopout(chromeAlpha, inputAlpha);
             return;
@@ -204,7 +204,7 @@ public class Popout : Window, IChatWindow
     {
         var frame = ChatChrome.Frame();
         ChatChrome.BeginScrollDrag(frame.Scroll);
-        ChatChrome.DrawLogBackground(frame, chromeAlpha);
+        ChatChrome.DrawLogBackground(frame, chromeAlpha, VanillaGameLook.TabLogBackgroundTint(Tab));
 
         var messages = frame.Messages;
         if (!Tab.SupportsInput)

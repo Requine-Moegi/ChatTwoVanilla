@@ -23,6 +23,10 @@ tags:
 changelog: |-
   **1.43.0**
   - Optional channel tint on the vanilla input box, off by default
+  - Each tab can tint its vanilla log background, saved with the tab
+  - Log background opacity follows the game, or a 0–100% override
+  - Vanilla Style settings tab
+  - Vanilla mode keeps the game's Axis font at the log font size, including pop-outs
 
   **1.42.1**
   - Each chat window keeps its own position and size while the vanilla resize grip is dragged

@@ -4206,6 +4206,78 @@ namespace ChatTwo.Resources {
             }
         }
 
+        internal static string Options_VanillaStyleTab_Name {
+            get {
+                return ResourceManager.GetString("Options_VanillaStyleTab_Name", resourceCulture);
+            }
+        }
+
+        internal static string Options_VanillaStyleTab_Intro {
+            get {
+                return ResourceManager.GetString("Options_VanillaStyleTab_Intro", resourceCulture);
+            }
+        }
+
+        internal static string Options_LogOpacity_UseGame_Name {
+            get {
+                return ResourceManager.GetString("Options_LogOpacity_UseGame_Name", resourceCulture);
+            }
+        }
+
+        internal static string Options_LogOpacity_UseGame_Description {
+            get {
+                return ResourceManager.GetString("Options_LogOpacity_UseGame_Description", resourceCulture);
+            }
+        }
+
+        internal static string Options_LogOpacity_Name {
+            get {
+                return ResourceManager.GetString("Options_LogOpacity_Name", resourceCulture);
+            }
+        }
+
+        internal static string Options_LogOpacity_Description {
+            get {
+                return ResourceManager.GetString("Options_LogOpacity_Description", resourceCulture);
+            }
+        }
+
+        internal static string Options_LogOpacity_PopoutNote {
+            get {
+                return ResourceManager.GetString("Options_LogOpacity_PopoutNote", resourceCulture);
+            }
+        }
+
+        internal static string Options_Tabs_LogBackground_Name {
+            get {
+                return ResourceManager.GetString("Options_Tabs_LogBackground_Name", resourceCulture);
+            }
+        }
+
+        internal static string Options_Tabs_LogBackground_Description {
+            get {
+                return ResourceManager.GetString("Options_Tabs_LogBackground_Description", resourceCulture);
+            }
+        }
+
+        internal static string Options_VanillaStyle_PerTabColor {
+            get {
+                return ResourceManager.GetString("Options_VanillaStyle_PerTabColor", resourceCulture);
+            }
+        }
+
+        internal static string Options_VanillaStyle_FontNote {
+            get {
+                return ResourceManager.GetString("Options_VanillaStyle_FontNote", resourceCulture);
+            }
+        }
+
+        internal static string Options_VanillaStyle_ResizeNote {
+            get {
+                return ResourceManager.GetString("Options_VanillaStyle_ResizeNote", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to Focus chat input.
         /// </summary>

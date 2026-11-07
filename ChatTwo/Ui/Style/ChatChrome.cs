@@ -401,13 +401,13 @@ public static class ChatChrome
         return Drawer.Draw(ImGui.GetWindowDrawList(), part, min, max, alpha, tint);
     }
 
-    public static void DrawLogBackground(VanillaFrame frame, float? permeation = null)
+    public static void DrawLogBackground(VanillaFrame frame, float? permeation = null, Vector4? tint = null)
     {
         Catalog.EnsureLoaded();
         var rect = frame.Background;
         var drawList = ImGui.GetWindowDrawList();
-        var alphaArg = permeation ?? VanillaGameLook.LogBackgroundAlpha();
-        if (Drawer.Draw(drawList, Catalog.Background, rect.Min, rect.Max, alphaArg))
+        var alphaArg = permeation ?? VanillaGameLook.LogBackgroundOpacityFactor();
+        if (Drawer.Draw(drawList, Catalog.Background, rect.Min, rect.Max, alphaArg, tint))
             return;
 
         // Soft edge, no hard border. The real part is a 20px fade into black.

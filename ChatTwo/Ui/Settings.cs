@@ -39,6 +39,7 @@ public sealed class SettingsWindow : Window
         [
             new Display(Mutable),
             new ChatLogConfig(Plugin, Mutable),
+            new VanillaStyleTab(Plugin, Mutable),
             new Emote(Plugin, Mutable),
             new Preview(Mutable),
             new Fonts(Mutable),

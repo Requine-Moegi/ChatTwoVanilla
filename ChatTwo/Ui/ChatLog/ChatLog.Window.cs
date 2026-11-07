@@ -628,6 +628,10 @@ public partial class ChatLog : Window, IChatWindow
         if (!child.Success)
             return;
 
+        // Push again inside the child. A child window does not always keep the parent's font,
+        // and a pop-out is a separate window, so the game Axis has to be pushed on this draw.
+        using var axis = ChatChrome.PushContentFont();
+
         if (tab.DisplayTimestamp && Plugin.Config.PrettierTimestamps)
             DrawLogTableStyle(tab, handler, switchedTab);
         else
@@ -872,10 +876,11 @@ public partial class ChatLog : Window, IChatWindow
             messages = messages with { H = Math.Max(frame.Scale * 20f, previewTop - 4f * frame.Scale - messages.Y) };
         }
 
-        ChatChrome.BeginScrollDrag(frame.Scroll);
-        ChatChrome.DrawLogBackground(frame);
-
         var (tabIndex, switched) = ResolveVanillaTab();
+        var shown = tabIndex >= 0 ? Plugin.Config.Tabs[tabIndex] : null;
+
+        ChatChrome.BeginScrollDrag(frame.Scroll);
+        ChatChrome.DrawLogBackground(frame, VanillaGameLook.LogBackgroundOpacityFactor(), VanillaGameLook.TabLogBackgroundTint(shown));
         ImGui.SetCursorScreenPos(messages.Min);
         if (tabIndex >= 0)
         {

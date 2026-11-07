@@ -20,13 +20,13 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Dillard-Coffey/ChatTwoVanilla/main/ChatTwo/images/icon.png",
     "Punchline": "Chat 2, skinned like the vanilla chat log.",
-    "Changelog": "**1.43.0**\n- Optional channel tint on the vanilla input box, off by default\n\n**1.42.1**\n- Each chat window keeps its own position and size while the vanilla resize grip is dragged\n- Saving settings keeps popped-out tabs popped out\n- English settings text uses color, not colour\n\n**Chat 2 Vanilla (fork, 2026-11-03)**\n- Toggleable vanilla chat-log style drawn in ImGui from the game's ULD textures\n- Renamed to ChatTwoVanilla so it can coexist with Chat 2 (separate commands and IPC)\n\n**Inherited from Chat 2**\n- Unlimited tabs, filters, emotes, autocomplete, links, and the web interface\n- See the upstream changelog for earlier Chat 2 changes",
+    "Changelog": "**1.43.0**\n- Optional channel tint on the vanilla input box, off by default\n- Each tab can tint its vanilla log background, saved with the tab\n- Log background opacity follows the game, or a 0\u2013100% override\n- Vanilla Style settings tab\n- Vanilla mode keeps the game's Axis font at the log font size, including pop-outs\n\n**1.42.1**\n- Each chat window keeps its own position and size while the vanilla resize grip is dragged\n- Saving settings keeps popped-out tabs popped out\n- English settings text uses color, not colour\n\n**Chat 2 Vanilla (fork, 2026-11-03)**\n- Toggleable vanilla chat-log style drawn in ImGui from the game's ULD textures\n- Renamed to ChatTwoVanilla so it can coexist with Chat 2 (separate commands and IPC)\n\n**Inherited from Chat 2**\n- Unlimited tabs, filters, emotes, autocomplete, links, and the web interface\n- See the upstream changelog for earlier Chat 2 changes",
     "AcceptsFeedback": true,
     "IsHide": false,
     "IsTestingExclusive": false,
     "DownloadLinkInstall": "https://github.com/Dillard-Coffey/ChatTwoVanilla/releases/latest/download/latest.zip",
     "DownloadLinkUpdate": "https://github.com/Dillard-Coffey/ChatTwoVanilla/releases/latest/download/latest.zip",
     "DownloadLinkTesting": "https://github.com/Dillard-Coffey/ChatTwoVanilla/releases/latest/download/latest.zip",
-    "LastUpdate": 1794065670
+    "LastUpdate": 1794066110
   }
 ]

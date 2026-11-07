@@ -1508,6 +1508,42 @@ Your old database can still be recovered, please contact the plugin author for h
     <data name="Options_TintInputByChannel_VanillaOnly" xml:space="preserve">
         <value>The input tint is drawn only while vanilla style is on.</value>
     </data>
+    <data name="Options_VanillaStyleTab_Name" xml:space="preserve">
+        <value>Vanilla Style</value>
+    </data>
+    <data name="Options_VanillaStyleTab_Intro" xml:space="preserve">
+        <value>These options change the vanilla chat window. Anything that also matters with vanilla style off is still on its original tab.</value>
+    </data>
+    <data name="Options_LogOpacity_UseGame_Name" xml:space="preserve">
+        <value>Use game setting</value>
+    </data>
+    <data name="Options_LogOpacity_UseGame_Description" xml:space="preserve">
+        <value>Follow the game's Log Window Transparency for the vanilla log background. Uncheck to set an opacity here. The input box keeps the game's input transparency.</value>
+    </data>
+    <data name="Options_LogOpacity_Name" xml:space="preserve">
+        <value>Log background opacity</value>
+    </data>
+    <data name="Options_LogOpacity_Description" xml:space="preserve">
+        <value>0% is clear and 100% is the log texture at its designed translucency. This replaces the game's transparency for the log background. It is still multiplied by the texture's own alpha, so 100% matches the game log at full opacity.</value>
+    </data>
+    <data name="Options_LogOpacity_PopoutNote" xml:space="preserve">
+        <value>A popped-out tab with its own opacity uses that value instead of this one.</value>
+    </data>
+    <data name="Options_Tabs_LogBackground_Name" xml:space="preserve">
+        <value>Log background color</value>
+    </data>
+    <data name="Options_Tabs_LogBackground_Description" xml:space="preserve">
+        <value>Tint this tab's vanilla chat log. Leave it off for the normal log. The color is saved with the tab and is used in the main window and in a pop-out.</value>
+    </data>
+    <data name="Options_VanillaStyle_PerTabColor" xml:space="preserve">
+        <value>Each tab's log background color is on the Tabs tab. Off leaves that tab's log untinted.</value>
+    </data>
+    <data name="Options_VanillaStyle_FontNote" xml:space="preserve">
+        <value>Vanilla style always draws with the game's Axis font at the game's log font size, including pop-outs. The Fonts tab applies only while vanilla style is off. If the font atlas is still building, text keeps the current font for that frame and switches to Axis once it is ready. /chat2vanillaDebugger shows the active font.</value>
+    </data>
+    <data name="Options_VanillaStyle_ResizeNote" xml:space="preserve">
+        <value>In vanilla style, resizing uses the corner grip. These checkboxes are also on the Chat log tab, where they control the original window.</value>
+    </data>
     <data name="ChatLog_FocusInput" xml:space="preserve">
         <value>Focus chat input</value>
     </data>

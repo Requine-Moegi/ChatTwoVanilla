@@ -81,6 +81,34 @@ public static class VanillaGameLook
     }
 
     /// <summary>
+    /// Factor passed into the log nine-grid. The node's own alpha (127/255 on the log panel) is
+    /// multiplied by this afterwards, which is the current look and what the game does to the node.
+    /// The override slider replaces the permeation factor. It does not replace the node alpha:
+    /// 100% is the texture at its designed translucency, matching the game at permeation 0.
+    /// A popped-out tab with its own opacity still replaces this factor for that window.
+    /// </summary>
+    public static float LogBackgroundOpacityFactor()
+    {
+        if (Plugin.Config.UseGameLogOpacity)
+            return LogBackgroundAlpha();
+
+        return Math.Clamp(Plugin.Config.LogBackgroundOpacity / 100f, 0f, 1f);
+    }
+
+    /// <summary>
+    /// Multiply color for one tab's log background. Null leaves the nine-grid untinted.
+    /// </summary>
+    public static Vector4? TabLogBackgroundTint(Tab? tab)
+    {
+        if (tab is not { LogBackgroundTint: true })
+            return null;
+
+        var stored = tab.LogBackgroundColor == 0 ? 0xFFFFFFFFu : tab.LogBackgroundColor;
+        var rgb = ColourUtil.RgbaToVector3(stored);
+        return new Vector4(rgb, 1f);
+    }
+
+    /// <summary>
     /// Chat log font size in the same point-sized unit Chat 2 stores in <c>FontSizeV2</c>.
     /// Current clients appear to store the point size directly (12, 14, 16, …). A small integer
     /// is treated as a slider index into the sizes the game ships.

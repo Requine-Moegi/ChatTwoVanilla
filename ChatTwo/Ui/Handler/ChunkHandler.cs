@@ -110,13 +110,17 @@ public class ChunkHandler
 
         using var pushedColor = ImRaii.PushColor(ImGuiCol.Text, color);
 
-        var disposableFont = text.Italic && Plugin.Config.VanillaStyle
-            ? Plugin.FontManager.VanillaAxisItalic
-            : Plugin.Config.FontsEnabled && Plugin.FontManager.ItalicFont != null
-                ? Plugin.FontManager.ItalicFont
-                : Plugin.FontManager.AxisItalic;
+        // Vanilla italic is the same Axis handle at the log size. If that atlas entry is still
+        // building, leave the regular Axis (or the current font) in place for this frame.
+        IDisposable? italicFont = null;
         if (text.Italic)
-            disposableFont.Push();
+        {
+            italicFont = Plugin.Config.VanillaStyle
+                ? Plugin.FontManager.PushVanillaAxisItalic()
+                : (Plugin.Config.FontsEnabled && Plugin.FontManager.ItalicFont != null
+                    ? Plugin.FontManager.ItalicFont
+                    : Plugin.FontManager.AxisItalic).Push();
+        }
 
         // Check for contains here as sometimes there are multiple
         // TextChunks with the same PlayerPayload but only one has the name.
@@ -146,7 +150,6 @@ public class ChunkHandler
             ImGuiUtil.PostPayload(chunk, handler);
         }
 
-        if (text.Italic)
-            disposableFont.Pop();
+        italicFont?.Dispose();
     }
 }
