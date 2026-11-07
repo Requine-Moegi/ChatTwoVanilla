@@ -2,6 +2,7 @@ using System.Numerics;
 using ChatTwo.Code;
 using ChatTwo.Util;
 using Dalamud.Game.Config;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace ChatTwo.Ui.Style;
 
@@ -129,6 +130,27 @@ public static class VanillaGameLook
             return ladder[(int)raw.Value];
 
         return 14f;
+    }
+
+    /// <summary>
+    /// The game's interface scale, from <c>AtkUnitBase.GetGlobalUIScale</c>.
+    /// This is the scale the chat log itself uses. It is not Dalamud's global scale,
+    /// which can be set higher and was stretching Axis on top of the point size.
+    /// </summary>
+    public static float GameUiScale()
+    {
+        try
+        {
+            var scale = AtkUnitBase.GetGlobalUIScale();
+            if (float.IsFinite(scale) && scale is >= 0.25f and <= 4f)
+                return scale;
+        }
+        catch (Exception)
+        {
+            // The signature is not resolved yet. Callers fall back to 1.
+        }
+
+        return 1f;
     }
 
     /// <summary>
