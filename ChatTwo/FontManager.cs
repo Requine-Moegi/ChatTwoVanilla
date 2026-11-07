@@ -204,20 +204,31 @@ public class FontManager
     public static float SizeInPx(float pt) => (float) (pt * 4.0 / 3.0);
 
     /// <summary>
-    /// Pixel size passed to <see cref="IFontAtlas.NewGameFontHandle"/>. Dalamud multiplies that
-    /// size by its own global scale when the glyphs are drawn. Dividing it out, then multiplying
-    /// by the game's interface scale, leaves the chat text at the size the game log uses.
+    /// On-screen pixel size of the vanilla chat text. The setting is what gets drawn.
     /// </summary>
-    public static float AxisPixels(float pt)
+    public static float VanillaFontScreenPx()
+    {
+        var px = Plugin.Config.VanillaFontSizePx;
+        if (!float.IsFinite(px) || px < 1f)
+            return 16f;
+        return px;
+    }
+
+    /// <summary>
+    /// Pixel size to pass to <see cref="IFontAtlas.NewGameFontHandle"/> so the glyphs come out
+    /// <paramref name="screenPx"/> tall. Dalamud's game-font build and ImGui's global scale
+    /// multiply the requested size, so the handle is given <paramref name="screenPx"/> divided by that scale.
+    /// </summary>
+    public static float HandlePixels(float screenPx)
     {
         var dalamud = ImGuiHelpers.GlobalScale;
         if (!float.IsFinite(dalamud) || dalamud < 0.05f)
             dalamud = 1f;
-
-        return SizeInPx(pt) * Ui.Style.VanillaGameLook.GameUiScale() / dalamud;
+        return screenPx / dalamud;
     }
+
     public static float GetFontSize() => Plugin.Config.VanillaStyle
-        ? SizeInPx(Ui.Style.VanillaGameLook.LogFontSizePt())
+        ? VanillaFontScreenPx()
         : Plugin.Config.FontsEnabled ? Plugin.Config.GlobalFontV2.SizePx : SizeInPx(Plugin.Config.FontSizeV2);
 
     /// <summary>
@@ -229,14 +240,14 @@ public class FontManager
     {
         EnsureVanillaAxis();
         if (_vanillaAxis!.Available)
-            return PushIfReady(_vanillaAxis, _vanillaAxisPt, recordLog: true, "game Axis");
+            return PushIfReady(_vanillaAxis, _vanillaAxisPt, _vanillaAxisBuiltPx, recordLog: true, "game Axis");
 
         // The saved Chat 2 font stays underneath this push. Do not reveal it while
         // the log-sized face is still building or after its build failed.
         if (Axis is { Available: true })
-            return PushIfReady(Axis, Plugin.Config.FontSizeV2, recordLog: true, "fallback Axis at the Fonts-tab size; log-size handle not ready");
+            return PushIfReady(Axis, VanillaFontScreenPx(), 0f, recordLog: true, "fallback Axis at the Fonts-tab size; log-size handle not ready");
 
-        Remember(_vanillaAxisPt, SizeInPx(_vanillaAxisPt), false, _vanillaAxis.LoadException?.Message, false, ImGui.GetFontSize(), ImGuiHelpers.GlobalScale, "fallback Dalamud default; no Axis handle is ready");
+        Remember(VanillaFontScreenPx(), 0f, false, _vanillaAxis.LoadException?.Message, false, ImGui.GetFontSize(), ImGuiHelpers.GlobalScale, "fallback Dalamud default; no Axis handle is ready");
         return NopDispose.Instance;
     }
 
@@ -262,7 +273,7 @@ public class FontManager
     public IDisposable PushVanillaAxisPreview()
     {
         EnsureVanillaAxis();
-        return PushIfReady(_vanillaAxis!, _vanillaAxisPt, recordLog: false, "game Axis");
+        return PushIfReady(_vanillaAxis!, _vanillaAxisPt, _vanillaAxisBuiltPx, recordLog: false, "game Axis");
     }
 
     /// <summary>
@@ -272,7 +283,7 @@ public class FontManager
     public IDisposable PushVanillaAxisItalic()
     {
         EnsureVanillaAxis();
-        return PushIfReady(_vanillaAxisItalic!, _vanillaAxisPt, recordLog: false, "game Axis italic");
+        return PushIfReady(_vanillaAxisItalic!, _vanillaAxisPt, _vanillaItalicBuiltPx, recordLog: false, "game Axis italic");
     }
 
     /// <summary>
@@ -282,8 +293,8 @@ public class FontManager
     public IDisposable PushFixedAxis(float pt)
     {
         var key = (int)Math.Round(pt * 100f);
-        var px = AxisPixels(pt);
-        if (!_fixedAxis.TryGetValue(key, out var entry) || NeedsRebuild(entry.Handle, entry.Pt, pt, entry.BuiltAt) || Math.Abs(entry.BuiltPx - px) >= 0.25f)
+        var px = HandlePixels(SizeInPx(pt));
+        if (!_fixedAxis.TryGetValue(key, out var entry) || NeedsRebuild(entry.Handle, entry.BuiltPx, px, entry.BuiltAt))
         {
             if (entry != null)
             {
@@ -302,7 +313,7 @@ public class FontManager
             _fixedAxis[key] = entry;
         }
 
-        return PushIfReady(entry.Handle, pt, recordLog: false, "game Axis");
+        return PushIfReady(entry.Handle, SizeInPx(pt), entry.BuiltPx, recordLog: false, "game Axis");
     }
 
     /// <summary>
@@ -315,7 +326,7 @@ public class FontManager
         var log = _vanillaAxis!;
         var italic = _vanillaAxisItalic!;
         var report = new StringBuilder();
-        report.AppendLine($"requested {_vanillaAxisPt:0.##} pt ({SizeInPx(_vanillaAxisPt):0.##} px) via IFontAtlas.NewGameFontHandle(Axis)");
+        report.AppendLine($"setting {_vanillaAxisPt:0.##} px; handle {_vanillaAxisBuiltPx:0.##} px via IFontAtlas.NewGameFontHandle(Axis)");
         report.AppendLine($"handle ready={log.Available} italic ready={italic.Available} globalScale={ImGuiHelpers.GlobalScale:0.##}");
         if (log.LoadException != null)
             report.AppendLine($"load error: {log.LoadException.Message}");
@@ -340,27 +351,27 @@ public class FontManager
 
     private void EnsureVanillaAxis()
     {
-        var pt = Ui.Style.VanillaGameLook.LogFontSizePt();
-        var px = AxisPixels(pt);
-        if (NeedsRebuild(_vanillaAxis, _vanillaAxisPt, pt, _vanillaAxisBuiltAt) || Math.Abs(_vanillaAxisBuiltPx - px) >= 0.25f)
+        var screenPx = VanillaFontScreenPx();
+        var px = HandlePixels(screenPx);
+        if (NeedsRebuild(_vanillaAxis, _vanillaAxisBuiltPx, px, _vanillaAxisBuiltAt))
         {
             if (_vanillaAxis?.LoadException != null)
-                Plugin.Log.Information($"Vanilla log Axis failed ({_vanillaAxis.LoadException.Message}). Building {pt:0.##}pt again.");
+                Plugin.Log.Information($"Vanilla log Axis failed ({_vanillaAxis.LoadException.Message}). Building {screenPx:0.##}px again.");
             _vanillaAxis?.Dispose();
             _vanillaAxis = NewAxis(px);
-            _vanillaAxisPt = pt;
+            _vanillaAxisPt = screenPx;
             _vanillaAxisBuiltPx = px;
             _vanillaAxisBuiltAt = Environment.TickCount64;
             _loggedLogPush = false;
         }
 
-        if (NeedsRebuild(_vanillaAxisItalic, _vanillaItalicPt, pt, _vanillaItalicBuiltAt) || Math.Abs(_vanillaItalicBuiltPx - px) >= 0.25f)
+        if (NeedsRebuild(_vanillaAxisItalic, _vanillaItalicBuiltPx, px, _vanillaItalicBuiltAt))
         {
             if (_vanillaAxisItalic?.LoadException != null)
-                Plugin.Log.Information($"Vanilla italic Axis failed ({_vanillaAxisItalic.LoadException.Message}). Building {pt:0.##}pt again.");
+                Plugin.Log.Information($"Vanilla italic Axis failed ({_vanillaAxisItalic.LoadException.Message}). Building {screenPx:0.##}px again.");
             _vanillaAxisItalic?.Dispose();
             _vanillaAxisItalic = NewAxis(px, italicSkew: px / 6f);
-            _vanillaItalicPt = pt;
+            _vanillaItalicPt = screenPx;
             _vanillaItalicBuiltPx = px;
             _vanillaItalicBuiltAt = Environment.TickCount64;
         }
@@ -381,8 +392,7 @@ public class FontManager
     }
 
     /// <summary>
-    /// The pixel size is already adjusted by <see cref="AxisPixels"/> so Dalamud's global scale
-    /// does not stack on top of the game's interface scale.
+    /// <paramref name="sizePx"/> is the size after dividing out Dalamud's global scale.
     /// </summary>
     private static IFontHandle NewAxis(float sizePx, float italicSkew = 0f)
     {
@@ -392,14 +402,13 @@ public class FontManager
         return Plugin.Interface.UiBuilder.FontAtlas.NewGameFontHandle(style);
     }
 
-    private IDisposable PushIfReady(IFontHandle handle, float pt, bool recordLog, string source)
+    private IDisposable PushIfReady(IFontHandle handle, float settingPx, float handlePx, bool recordLog, string source)
     {
-        var px = SizeInPx(pt);
         var scale = ImGuiHelpers.GlobalScale;
         if (!handle.Available)
         {
             if (recordLog)
-                Remember(pt, px, false, handle.LoadException?.Message, false, ImGui.GetFontSize(), scale, "fallback (atlas not ready, keeping the current font)");
+                Remember(settingPx, handlePx, false, handle.LoadException?.Message, false, ImGui.GetFontSize(), scale, "fallback (atlas not ready, keeping the current font)");
             return NopDispose.Instance;
         }
 
@@ -407,15 +416,15 @@ public class FontManager
         var drawn = ImGui.GetFontSize();
         var match = FontMatches(handle) ? source : "pushed, but the active font pointer differs";
         if (recordLog)
-            Remember(pt, px, true, handle.LoadException?.Message, true, drawn, scale, match);
+            Remember(settingPx, handlePx, true, handle.LoadException?.Message, true, drawn, scale, match);
         return pushed;
     }
 
-    private void Remember(float pt, float px, bool ready, string? error, bool pushed, float drawn, float scale, string source)
+    private void Remember(float settingPx, float handlePx, bool ready, string? error, bool pushed, float drawn, float scale, string source)
     {
         _loggedLogPush = true;
-        _lastLogFont = new VanillaFontReport(pt, px, ready, error, pushed, drawn, scale, source);
-        var line = $"Vanilla font: {source}; requested {pt:0.##}pt ({px:0.##}px); drawn {drawn:0.##}px; globalScale {scale:0.##}; gameUiScale {Ui.Style.VanillaGameLook.GameUiScale():0.##}; ready={ready}; pushed={pushed}; error={error ?? "none"}; fontsEnabled={Plugin.Config.FontsEnabled}; savedFont={Plugin.Config.GlobalFontV2}; language={Plugin.DataManager.Language}; {Ui.Style.VanillaGameLook.DescribeLogFont()}";
+        _lastLogFont = new VanillaFontReport(settingPx, handlePx, ready, error, pushed, drawn, scale, source);
+        var line = $"Vanilla font: {source}; setting {settingPx:0.##}px; handle {handlePx:0.##}px; drawn {drawn:0.##}px; globalScale {scale:0.##}; ready={ready}; pushed={pushed}; error={error ?? "none"}; fontsEnabled={Plugin.Config.FontsEnabled}; savedFont={Plugin.Config.GlobalFontV2}; language={Plugin.DataManager.Language}; {Ui.Style.VanillaGameLook.DescribeLogFont()}";
         if (line == _loggedLine)
             return;
 

@@ -62,7 +62,8 @@ public sealed class VanillaStyleTab : ISettingsTab
         ImGui.Spacing();
         GameChatTabImportUi.Draw();
         ImGui.Spacing();
-        ImGuiUtil.HelpText(Language.Options_VanillaStyle_FontNote);
+        ImGuiUtil.DragFloatVertical(Language.Options_VanillaFontSize_Name, Language.Options_VanillaFontSize_Description, ref Mutable.VanillaFontSizePx, 1f, 8f, 72f, $"{Mutable.VanillaFontSizePx:N0} px", ImGuiSliderFlags.AlwaysClamp);
+        Mutable.VanillaFontSizePx = MathF.Round(Mutable.VanillaFontSizePx);
         ImGui.Spacing();
 
         ImGuiUtil.OptionCheckbox(ref Mutable.CanMove, Language.Options_CanMove_Name);

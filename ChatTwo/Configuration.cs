@@ -136,6 +136,11 @@ public class Configuration : IPluginConfiguration
     public bool HighlightUnreadTabs = true;
 
     /// <summary>
+    /// On-screen size of the vanilla chat text, in pixels. 16 draws at 16px.
+    /// </summary>
+    public float VanillaFontSizePx = 16f;
+
+    /// <summary>
     /// When vanilla style is on, shift the input box background toward the selected channel's hue.
     /// Near-white channels such as Say stay the normal dark box. The chat log is not tinted.
     /// </summary>
@@ -243,6 +248,7 @@ public class Configuration : IPluginConfiguration
         ChosenStyle = other.ChosenStyle;
         VanillaStyle = other.VanillaStyle;
         HighlightUnreadTabs = other.HighlightUnreadTabs;
+        VanillaFontSizePx = other.VanillaFontSizePx;
         TintInputByChannel = other.TintInputByChannel;
         InputChannelTint = other.InputChannelTint;
         UseGameLogOpacity = other.UseGameLogOpacity;

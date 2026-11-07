@@ -1544,6 +1544,12 @@ Your old database can still be recovered, please contact the plugin author for h
     <data name="Options_VanillaStyle_FontNote" xml:space="preserve">
         <value>Uses the game's chat font and size.</value>
     </data>
+    <data name="Options_VanillaFontSize_Name" xml:space="preserve">
+        <value>Font size</value>
+    </data>
+    <data name="Options_VanillaFontSize_Description" xml:space="preserve">
+        <value>Size of the chat text on screen, in pixels.</value>
+    </data>
     <data name="Options_VanillaStyle_ResizeNote" xml:space="preserve">
         <value>Drag the corner arrow to resize.</value>
     </data>

@@ -4175,6 +4175,18 @@ namespace ChatTwo.Resources {
                 return ResourceManager.GetString("Options_HighlightUnreadTabs_Description", resourceCulture);
             }
         }
+
+        internal static string Options_VanillaFontSize_Name {
+            get {
+                return ResourceManager.GetString("Options_VanillaFontSize_Name", resourceCulture);
+            }
+        }
+
+        internal static string Options_VanillaFontSize_Description {
+            get {
+                return ResourceManager.GetString("Options_VanillaFontSize_Description", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to While vanilla style is on, the Dalamud style override is not applied.
