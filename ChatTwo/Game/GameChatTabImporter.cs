@@ -23,8 +23,9 @@ internal sealed class GameTabImport
 
 /// <summary>
 /// Reads the four vanilla chat tabs from the running client. Names come from
-/// <see cref="RaptureLogModule"/>; which messages each tab shows come from the
-/// loaded <see cref="LogFilterConfig"/> (the LogFilter checkbox list), not from a file.
+/// <see cref="RaptureLogModule"/>. Which messages each tab shows come from the
+/// LOGFLTR layout: one byte per LogFilter row, inside LogFilterConfig when that
+/// image is present, otherwise from the character's LOGFLTR.DAT.
 /// </summary>
 internal static class GameChatTabImporter
 {
@@ -84,27 +85,7 @@ internal static class GameChatTabImporter
             return false;
         }
 
-        var filter = LogFilterConfig.Instance();
-        if (filter == null)
-        {
-            error = "LogFilterConfig is not available. The character log filters are not loaded yet. Nothing was changed.";
-            Plugin.Log.Warning("Import tabs from game chat: {Reason}", error);
-            return false;
-        }
-
-        var header = sizeof(UserFileManager.UserFileEvent);
-        var payloadSize = sizeof(LogFilterConfig) - header;
-        if (payloadSize < 4 * (LogFilterRows.MaxRowId + 1))
-        {
-            error = $"LogFilterConfig is {sizeof(LogFilterConfig)} bytes. After the {header}-byte user-file header, {payloadSize} bytes are left, which is shorter than 4 tabs of LogFilter checkboxes. The struct no longer matches this client. Nothing was changed.";
-            Plugin.Log.Warning("Import tabs from game chat: {Reason}", error);
-            return false;
-        }
-
-        var payload = new byte[payloadSize];
-        new ReadOnlySpan<byte>((byte*)filter + header, payloadSize).CopyTo(payload);
-
-        if (!TryFindFlags(payload, out var flags, out var how, out var layoutError))
+        if (!TryReadFilters(out var flags, out var how, out var layoutError))
         {
             error = layoutError;
             Plugin.Log.Warning("Import tabs from game chat: {Reason}", error);
@@ -218,175 +199,118 @@ internal static class GameChatTabImporter
         return source;
     }
 
-    private static bool TryFindFlags(byte[] payload, out bool[][] flags, out string how, out string error)
+    private static unsafe bool TryReadFilters(out bool[][] flags, out string how, out string error)
     {
         flags = [];
         how = "";
         error = "";
 
-        bool[][]? best = null;
-        var bestScore = int.MinValue;
-        var ambiguous = false;
-        string bestHow = "";
-
-        void Consider(bool[][] candidate, string description)
+        var filter = LogFilterConfig.Instance();
+        if (filter != null)
         {
-            var score = Score(candidate);
-            if (score < 8)
-                return;
-            if (score > bestScore)
+            var memory = new byte[sizeof(LogFilterConfig)];
+            new ReadOnlySpan<byte>(filter, memory.Length).CopyTo(memory);
+            if (LogFilterDat.TryFind(memory, out flags))
             {
-                bestScore = score;
-                best = candidate;
-                bestHow = description;
-                ambiguous = false;
+                how = "LogFilterConfig, one byte per LogFilter row";
+                return true;
             }
-            else if (score == bestScore && best != null && !Same(best, candidate))
-            {
-                ambiguous = true;
-            }
-        }
 
-        var rows = LogFilterRows.MaxRowId + 1;
-        var span = payload.AsSpan();
-        if (payload.Length >= 4 * rows)
-        {
-            for (var offset = 0; offset + 4 * rows <= payload.Length; offset += 4)
+            var written = filter->TempDataBytesWritten;
+            if (filter->TempDataPtr != 0 && written >= LogFilterDat.MinimumSize && written <= 1024 * 1024)
             {
-                if (!IsCheckboxBytes(span.Slice(offset, 4 * rows)))
-                    continue;
-                Consider(ReadByteFlags(span.Slice(offset), rows), $"one byte per LogFilter row ({rows} rows) at LogFilterConfig+0x{0x48 + offset:X}");
-            }
-        }
-
-        foreach (var width in new[] { 40, 48, 64 })
-        {
-            for (var gap = 0; gap <= 0x80; gap += 4)
-            {
-                var stride = width + gap;
-                for (var offset = 0; offset + 3 * stride + width <= payload.Length; offset += 4)
+                var temp = new byte[written];
+                new ReadOnlySpan<byte>((byte*)filter->TempDataPtr, temp.Length).CopyTo(temp);
+                if (LogFilterDat.TryFind(temp, out flags))
                 {
-                    var candidate = ReadBitFlags(span, offset, stride, width, rows);
-                    if (BlankHits(candidate) != 0)
-                        continue;
-                    Consider(candidate, $"bitset of {width} bytes per tab, stride 0x{stride:X}, at LogFilterConfig+0x{0x48 + offset:X}");
+                    how = "LogFilterConfig file buffer, one byte per LogFilter row";
+                    return true;
                 }
             }
         }
 
-        if (best == null)
-        {
-            error = "The log filters could not be read reliably. Tab names are on RaptureLogModule, and the checkboxes live in LogFilterConfig after its 0x48-byte user-file header, but that payload is not a documented field. It was not a 0-or-1 checkbox for each LogFilter row, and it was not a bitset of those rows. Nothing was changed.";
-            return false;
-        }
+        var contentId = filter != null ? filter->CharacterContentId : 0;
+        if (contentId == 0)
+            contentId = Plugin.PlayerState.ContentId;
 
-        if (ambiguous)
-        {
-            error = "The log filters could not be read reliably. More than one layout in LogFilterConfig matched the LogFilter checkbox list, so the channels would be a guess. Nothing was changed.";
+        if (!TryReadLogFilterFile(contentId, out flags, out error))
             return false;
-        }
 
-        flags = best;
-        how = bestHow;
+        how = "LOGFLTR.DAT, one byte per LogFilter row";
+        error = "";
         return true;
     }
 
-    private static int Score(bool[][] flags)
+    private static bool TryReadLogFilterFile(ulong contentId, out bool[][] flags, out string error)
     {
-        var real = 0;
-        foreach (var tab in flags)
+        flags = [];
+        error = "";
+        if (contentId == 0)
         {
-            foreach (var row in LogFilterRows.All)
-            {
-                if (row.Row < tab.Length && tab[row.Row])
-                    real++;
-            }
-        }
-
-        return BlankHits(flags) == 0 ? real : -1;
-    }
-
-    private static int BlankHits(bool[][] flags)
-    {
-        var real = new bool[LogFilterRows.MaxRowId + 1];
-        foreach (var row in LogFilterRows.All)
-        {
-            if (row.Row < real.Length)
-                real[row.Row] = true;
-        }
-
-        var blank = 0;
-        foreach (var tab in flags)
-        {
-            for (var i = 0; i < tab.Length && i < real.Length; i++)
-            {
-                if (tab[i] && !real[i])
-                    blank++;
-            }
-        }
-
-        return blank;
-    }
-
-    private static bool Same(bool[][] left, bool[][] right)
-    {
-        if (left.Length != right.Length)
+            error = "The log filters could not be read. Log into the game and try again. Nothing was changed.";
             return false;
-        for (var i = 0; i < left.Length; i++)
+        }
+
+        var path = FindLogFilterPath(contentId);
+        if (path == null)
         {
-            if (left[i].Length != right[i].Length)
+            error = "The log filters could not be read from the game, and this character's LOGFLTR.DAT was not found. Nothing was changed.";
+            return false;
+        }
+
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            if (stream.Length < LogFilterDat.MinimumSize || stream.Length > 1024 * 1024)
+            {
+                error = "LOGFLTR.DAT is not the expected log-filter file. Nothing was changed.";
                 return false;
-            for (var j = 0; j < left[i].Length; j++)
-            {
-                if (left[i][j] != right[i][j])
-                    return false;
             }
-        }
 
-        return true;
-    }
-
-    private static bool IsCheckboxBytes(ReadOnlySpan<byte> bytes)
-    {
-        foreach (var value in bytes)
-        {
-            if (value > 1)
+            var data = new byte[stream.Length];
+            stream.ReadExactly(data);
+            if (!LogFilterDat.TryParse(data, out flags))
+            {
+                error = "LOGFLTR.DAT does not match the 4-tab filter layout. Nothing was changed.";
                 return false;
-        }
-
-        return true;
-    }
-
-    private static bool[][] ReadByteFlags(ReadOnlySpan<byte> payload, int rows)
-    {
-        var flags = new bool[4][];
-        for (var tab = 0; tab < 4; tab++)
-        {
-            flags[tab] = new bool[rows];
-            var slice = payload.Slice(tab * rows, rows);
-            for (var row = 0; row < rows; row++)
-                flags[tab][row] = slice[row] != 0;
-        }
-
-        return flags;
-    }
-
-    private static bool[][] ReadBitFlags(ReadOnlySpan<byte> payload, int offset, int stride, int width, int rows)
-    {
-        var flags = new bool[4][];
-        for (var tab = 0; tab < 4; tab++)
-        {
-            flags[tab] = new bool[rows];
-            var bits = payload.Slice(offset + tab * stride, width);
-            for (var row = 0; row < rows; row++)
-            {
-                var index = row >> 3;
-                if (index >= bits.Length)
-                    break;
-                flags[tab][row] = (bits[index] & (1 << (row & 7))) != 0;
             }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(ex, "Could not read {Path}", path);
+            error = "LOGFLTR.DAT could not be read. Nothing was changed.";
+            return false;
+        }
+    }
+
+    private static string? FindLogFilterPath(ulong contentId)
+    {
+        var root = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "My Games",
+            "FINAL FANTASY XIV - A Realm Reborn");
+        if (!Directory.Exists(root))
+            return null;
+
+        var exact = Path.Combine(root, "FFXIV_CHR" + contentId.ToString("X16"), "LOGFLTR.DAT");
+        if (File.Exists(exact))
+            return exact;
+
+        var bare = contentId.ToString("X");
+        foreach (var dir in Directory.EnumerateDirectories(root, "FFXIV_CHR*"))
+        {
+            var folder = Path.GetFileName(dir);
+            var id = folder.Length > "FFXIV_CHR".Length ? folder["FFXIV_CHR".Length..] : "";
+            if (!id.Equals(bare, StringComparison.OrdinalIgnoreCase) && !id.Equals(contentId.ToString("X16"), StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var candidate = Path.Combine(dir, "LOGFLTR.DAT");
+            if (File.Exists(candidate))
+                return candidate;
         }
 
-        return flags;
+        return null;
     }
 }
