@@ -130,6 +130,12 @@ public class Configuration : IPluginConfiguration
     public bool VanillaStyle = true;
 
     /// <summary>
+    /// When vanilla style is on, inactive tabs with unread messages use a soft gold label.
+    /// Off keeps the normal label color. On by default.
+    /// </summary>
+    public bool HighlightUnreadTabs = true;
+
+    /// <summary>
     /// When vanilla style is on, shift the input box background toward the selected channel's hue.
     /// Near-white channels such as Say stay the normal dark box. The chat log is not tinted.
     /// </summary>
@@ -236,6 +242,7 @@ public class Configuration : IPluginConfiguration
         OverrideStyle = other.OverrideStyle;
         ChosenStyle = other.ChosenStyle;
         VanillaStyle = other.VanillaStyle;
+        HighlightUnreadTabs = other.HighlightUnreadTabs;
         TintInputByChannel = other.TintInputByChannel;
         InputChannelTint = other.InputChannelTint;
         UseGameLogOpacity = other.UseGameLogOpacity;

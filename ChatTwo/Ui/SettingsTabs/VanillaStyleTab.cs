@@ -25,6 +25,9 @@ public sealed class VanillaStyleTab : ISettingsTab
         ImGuiUtil.OptionCheckbox(ref Mutable.VanillaStyle, Language.Options_VanillaStyle_Name, Language.Options_VanillaStyle_Description);
         ImGui.Spacing();
 
+        ImGuiUtil.OptionCheckbox(ref Mutable.HighlightUnreadTabs, Language.Options_HighlightUnreadTabs_Name, Language.Options_HighlightUnreadTabs_Description);
+        ImGui.Spacing();
+
         ImGuiUtil.OptionCheckbox(ref Mutable.TintInputByChannel, Language.Options_TintInputByChannel_Name, Language.Options_TintInputByChannel_Description);
         if (Mutable.TintInputByChannel)
         {

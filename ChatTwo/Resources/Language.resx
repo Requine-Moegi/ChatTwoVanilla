@@ -1490,6 +1490,12 @@ Your old database can still be recovered, please contact the plugin author for h
     <data name="Options_VanillaStyle_Description" xml:space="preserve">
         <value>Make the chat window look like the game's own chat log.</value>
     </data>
+    <data name="Options_HighlightUnreadTabs_Name" xml:space="preserve">
+        <value>Highlight tabs with new messages</value>
+    </data>
+    <data name="Options_HighlightUnreadTabs_Description" xml:space="preserve">
+        <value>Turn tab names gold when they have unread messages.</value>
+    </data>
     <data name="Options_VanillaStyle_OverrideIgnored" xml:space="preserve">
         <value>This does not change the vanilla chat window.</value>
     </data>

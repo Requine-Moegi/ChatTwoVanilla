@@ -23,6 +23,7 @@ tags:
 changelog: |-
   **1.43.5**
   - Shorter descriptions on the Vanilla Style and Tabs settings.
+  - Highlight tabs with new messages, on by default. Turn it off and unread tab names stay the normal color.
 
   **1.43.4**
   - The channel tint recolors the dark pixels of the input texture. The light rim is unchanged, and no extra fill is drawn.

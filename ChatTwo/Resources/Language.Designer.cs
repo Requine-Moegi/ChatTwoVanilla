@@ -4163,6 +4163,18 @@ namespace ChatTwo.Resources {
                 return ResourceManager.GetString("Options_VanillaStyle_Description", resourceCulture);
             }
         }
+
+        internal static string Options_HighlightUnreadTabs_Name {
+            get {
+                return ResourceManager.GetString("Options_HighlightUnreadTabs_Name", resourceCulture);
+            }
+        }
+
+        internal static string Options_HighlightUnreadTabs_Description {
+            get {
+                return ResourceManager.GetString("Options_HighlightUnreadTabs_Description", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to While vanilla style is on, the Dalamud style override is not applied.

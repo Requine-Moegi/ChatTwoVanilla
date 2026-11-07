@@ -1165,7 +1165,7 @@ public partial class ChatLog : Window, IChatWindow
                     MathF.Round(rect.Y + (rect.H - textSize.Y) * 0.5f));
                 var color = active
                     ? Vector4.One
-                    : unread
+                    : unread && Plugin.Config.HighlightUnreadTabs
                         ? new Vector4(0.94f, 0.82f, 0.52f, 1f)
                         : new Vector4(0.86f, 0.86f, 0.86f, 1f);
                 var clipPad = 8f * scale;
