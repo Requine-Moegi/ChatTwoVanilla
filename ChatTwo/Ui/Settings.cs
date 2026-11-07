@@ -17,6 +17,10 @@ public sealed class SettingsWindow : Window
     private List<ISettingsTab> Tabs { get; }
     private int CurrentTab;
 
+    // PopOut on each tab when this draft was taken. A matching value means the checkbox
+    // was not edited, so a pop-out opened afterwards must be kept.
+    private readonly Dictionary<Guid, bool> PopOutAtDraft = new();
+
     public SettingsWindow(Plugin plugin) : base($"{Language.Settings_Title.Format(Plugin.PluginName)}###chat2vanilla-settings")
     {
         Flags = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
@@ -71,6 +75,27 @@ public sealed class SettingsWindow : Window
     private void Initialise()
     {
         Mutable.UpdateFrom(Plugin.Config, false);
+        RememberPopOutDraft();
+    }
+
+    private void RememberPopOutDraft()
+    {
+        PopOutAtDraft.Clear();
+        foreach (var tab in Mutable.Tabs)
+            PopOutAtDraft[tab.Identifier] = tab.PopOut;
+    }
+
+    private void CarryLivePopOuts()
+    {
+        foreach (var tab in Mutable.Tabs)
+        {
+            if (!PopOutAtDraft.TryGetValue(tab.Identifier, out var atDraft) || tab.PopOut != atDraft)
+                continue;
+
+            var live = Plugin.Config.Tabs.Find(candidate => candidate.Identifier == tab.Identifier);
+            if (live != null)
+                tab.PopOut = live.PopOut;
+        }
     }
 
     public override void Draw()
@@ -160,7 +185,9 @@ public sealed class SettingsWindow : Window
                           || Math.Abs(Mutable.FontSizeV2 - Plugin.Config.FontSizeV2) > 0.001;
         var italicStateChanged = Mutable.ItalicEnabled != Plugin.Config.ItalicEnabled;
 
+        CarryLivePopOuts();
         Plugin.Config.UpdateFrom(Mutable, true);
+        Plugin.ChatLog.RebindPopOuts();
 
         // save after 60 frames have passed, which should hopefully not
         // commit any changes that cause a crash

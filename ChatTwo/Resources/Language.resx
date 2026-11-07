@@ -200,7 +200,7 @@
         <value>Display</value>
     </data>
     <data name="Options_ChatColours_Tab">
-        <value>Chat colours</value>
+        <value>Chat colors</value>
     </data>
     <data name="Options_ChatColours_Reset">
         <value>Reset to default</value>
@@ -1488,7 +1488,7 @@ Your old database can still be recovered, please contact the plugin author for h
         <value>Vanilla style</value>
     </data>
     <data name="Options_VanillaStyle_Description" xml:space="preserve">
-        <value>Draw the chat log like the game's chat window: framed log, channel name, input field, and a bottom tab strip, using the game's textures, Axis font, channel colours, and log transparency. Every tab is shown on that strip, and extra tabs scroll. The sidebar, title bar, and icon-font buttons are hidden while this is on. Turn it off to use the original Chat 2 look. Channel colours set in the Colours tab still override the game. Dalamud style override is not applied while this is on.</value>
+        <value>Draw the chat log like the game's chat window: framed log, channel name, input field, and a bottom tab strip, using the game's textures, Axis font, channel colors, and log transparency. Every tab is shown on that strip, and extra tabs scroll. The sidebar, title bar, and icon-font buttons are hidden while this is on. Turn it off to use the original Chat 2 look. Channel colors set in the Colors tab still override the game. Dalamud style override is not applied while this is on.</value>
     </data>
     <data name="Options_VanillaStyle_OverrideIgnored" xml:space="preserve">
         <value>While vanilla style is on, the Dalamud style override is not applied to the chat log or its popouts.</value>

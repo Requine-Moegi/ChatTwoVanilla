@@ -145,9 +145,13 @@ public class Configuration : IPluginConfiguration
 
     public void UpdateFrom(Configuration other, bool backToOriginal)
     {
-        if (backToOriginal)
-            foreach (var tab in Tabs.Where(t => t.PopOut))
-                tab.PopOut = false;
+        // Upstream Chat 2 clears PopOut here when copying the settings draft back onto the
+        // live config. The open pop-out still holds that tab object, sees PopOut go false,
+        // and docks itself (its close handler then saves). The draft is also a snapshot
+        // from when settings opened, so a tab popped out afterwards was saved as docked.
+        // Leave the flags alone. Settings copies a live pop-out onto the draft when the
+        // checkbox was not edited, and ChatLog rebinds each open window to the new tab.
+        _ = backToOriginal;
 
         HideChat = other.HideChat;
         HideDuringCutscenes = other.HideDuringCutscenes;

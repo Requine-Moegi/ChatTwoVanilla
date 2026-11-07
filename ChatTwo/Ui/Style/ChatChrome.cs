@@ -372,10 +372,25 @@ public static class ChatChrome
         }
     }
 
-    private static float _scrollY;
-    private static float _scrollMax;
-    private static float _scrollView = 1f;
-    private static float? _scrollDragFraction;
+    private sealed class ScrollState
+    {
+        public float Y;
+        public float Max;
+        public float View = 1f;
+        public float? DragFraction;
+    }
+
+    // The message child and the parent share one entry. BeginScrollDrag records the parent
+    // window, and NoteScroll (inside the child) writes that same entry.
+    private static readonly Dictionary<uint, ScrollState> Scrolls = new();
+    private static uint _scrollWindow;
+
+    private static ScrollState CurrentScroll()
+    {
+        if (!Scrolls.TryGetValue(_scrollWindow, out var state))
+            Scrolls[_scrollWindow] = state = new ScrollState();
+        return state;
+    }
 
     public static VanillaFrame Frame()
         => VanillaFrame.From(ImGui.GetWindowPos(), ImGui.GetWindowSize(), ImGuiHelpers.GlobalScale);
@@ -507,14 +522,25 @@ public static class ChatChrome
         return clicked;
     }
 
-    private static bool _gripDragging;
-    private static Vector2 _gripDragStartMouse;
-    private static Vector2 _gripDragStartSize;
-    private static Vector2 _gripDragStartPos;
+    private sealed class GripDrag
+    {
+        public bool Dragging;
+        public Vector2 StartMouse;
+        public Vector2 StartSize;
+        public Vector2 StartPos;
+    }
+
+    // One drag per ImGui window. A single static drag made every open log apply the same
+    // SetWindowPos/SetWindowSize, so resizing the main window moved each pop-out onto it.
+    private static readonly Dictionary<uint, GripDrag> GripDrags = new();
 
     public static void DrawGrip(VanillaFrame frame)
     {
         Catalog.EnsureLoaded();
+        var windowKey = ImGui.GetID("vanilla-grip");
+        if (!GripDrags.TryGetValue(windowKey, out var drag))
+            GripDrags[windowKey] = drag = new GripDrag();
+
         var sprite = frame.Grip;
         // The message child covers most of this sprite and would otherwise take the hover.
         // A later child sits above it. Hover, glow, and drag all use this same padded rect.
@@ -527,7 +553,7 @@ public static class ChatChrome
         var activated = false;
         ImGui.SetCursorScreenPos(hit.Min);
         using (var hitWindow = ImRaii.Child(
-                   "###vanilla-grip-hit",
+                   "##vanilla-grip-hit",
                    hit.Size,
                    false,
                    ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoNav))
@@ -535,12 +561,12 @@ public static class ChatChrome
             if (hitWindow)
             {
                 ImGui.SetCursorPos(Vector2.Zero);
-                ImGui.InvisibleButton("###vanilla-resize-grip", ImGui.GetContentRegionAvail());
+                ImGui.InvisibleButton("##vanilla-resize-grip", ImGui.GetContentRegionAvail());
                 hovered = ImGui.IsItemHovered();
                 activated = ImGui.IsItemActivated();
             }
 
-            var hotNow = hovered || _gripDragging;
+            var hotNow = hovered || drag.Dragging;
             if (hotNow)
                 ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNesw);
 
@@ -569,59 +595,64 @@ public static class ChatChrome
         var io = ImGui.GetIO();
         if (activated)
         {
-            _gripDragging = true;
-            _gripDragStartMouse = io.MousePos;
-            _gripDragStartSize = parentSize;
-            _gripDragStartPos = parentPos;
+            drag.Dragging = true;
+            drag.StartMouse = io.MousePos;
+            drag.StartSize = parentSize;
+            drag.StartPos = parentPos;
         }
 
-        if (!_gripDragging)
+        if (!drag.Dragging)
             return;
 
         if (!io.MouseDown[0])
         {
-            _gripDragging = false;
+            drag.Dragging = false;
             return;
         }
 
         if (ImGui.IsWindowDocked())
             return;
 
-        var delta = io.MousePos - _gripDragStartMouse;
+        var delta = io.MousePos - drag.StartMouse;
         var minimum = new Vector2(280f, 168f) * frame.Scale;
-        var newW = Math.Max(minimum.X, _gripDragStartSize.X + delta.X);
-        var newH = Math.Max(minimum.Y, _gripDragStartSize.Y - delta.Y);
-        ImGui.SetWindowPos(new Vector2(_gripDragStartPos.X, _gripDragStartPos.Y + _gripDragStartSize.Y - newH));
+        var newW = Math.Max(minimum.X, drag.StartSize.X + delta.X);
+        var newH = Math.Max(minimum.Y, drag.StartSize.Y - delta.Y);
+        ImGui.SetWindowPos(new Vector2(drag.StartPos.X, drag.StartPos.Y + drag.StartSize.Y - newH));
         ImGui.SetWindowSize(new Vector2(newW, newH));
     }
 
     public static void BeginScrollDrag(VanillaRect track)
     {
         // The click is taken by the button in PaintScrollbar, after this frame's child has closed.
-        // NoteScroll applies that fraction on the next frame. Nothing to do before the child.
+        // NoteScroll applies that fraction on the next frame. Record which window that belongs to.
+        _scrollWindow = ImGui.GetID("vanilla-scroll");
+        if (!Scrolls.ContainsKey(_scrollWindow))
+            Scrolls[_scrollWindow] = new ScrollState();
     }
 
     public static void NoteScroll()
     {
-        _scrollView = Math.Max(1f, ImGui.GetWindowHeight());
-        _scrollMax = ImGui.GetScrollMaxY();
-        if (_scrollDragFraction is float fraction && _scrollMax > 1f)
-            ImGui.SetScrollY(fraction * _scrollMax);
-        _scrollY = ImGui.GetScrollY();
+        var scroll = CurrentScroll();
+        scroll.View = Math.Max(1f, ImGui.GetWindowHeight());
+        scroll.Max = ImGui.GetScrollMaxY();
+        if (scroll.DragFraction is float fraction && scroll.Max > 1f)
+            ImGui.SetScrollY(fraction * scroll.Max);
+        scroll.Y = ImGui.GetScrollY();
         if (!ImGui.GetIO().MouseDown[0])
-            _scrollDragFraction = null;
+            scroll.DragFraction = null;
     }
 
     public static void PaintScrollbar(VanillaRect track)
     {
+        var scroll = CurrentScroll();
         // Hidden until the log actually overflows. The bright ScrollBarB piece is the thumb, not a full-height track.
-        if (_scrollMax <= 1f)
+        if (scroll.Max <= 1f)
             return;
 
         Catalog.EnsureLoaded();
         var thumbH = MathF.Round(ThumbHeight(track.H));
         var travel = Math.Max(1f, track.H - thumbH);
-        var thumbY = MathF.Round(track.Y + travel * Math.Clamp(_scrollY / Math.Max(1f, _scrollMax), 0f, 1f));
+        var thumbY = MathF.Round(track.Y + travel * Math.Clamp(scroll.Y / Math.Max(1f, scroll.Max), 0f, 1f));
         var thumbMin = new Vector2(track.X, thumbY);
         var thumbMax = thumbMin + new Vector2(track.W, thumbH);
         var drawList = ImGui.GetWindowDrawList();
@@ -629,21 +660,22 @@ public static class ChatChrome
             drawList.AddRectFilled(thumbMin, thumbMax, ImGui.GetColorU32(new Vector4(0.95f, 0.86f, 0.55f, 0.9f)), track.W * 0.3f);
 
         ImGui.SetCursorScreenPos(track.Min);
-        ImGui.InvisibleButton("###vanilla-scroll", track.Size);
+        ImGui.InvisibleButton("##vanilla-scroll", track.Size);
         if (!ImGui.IsItemActive())
             return;
 
         var io = ImGui.GetIO();
-        _scrollDragFraction = Math.Clamp((io.MousePos.Y - track.Y - thumbH * 0.5f) / travel, 0f, 1f);
+        scroll.DragFraction = Math.Clamp((io.MousePos.Y - track.Y - thumbH * 0.5f) / travel, 0f, 1f);
     }
 
     private static float ThumbHeight(float trackH)
     {
+        var scroll = CurrentScroll();
         var minThumb = Math.Min(trackH, 20f * ImGuiHelpers.GlobalScale);
-        if (_scrollMax <= 1f)
+        if (scroll.Max <= 1f)
             return minThumb;
 
-        var ratio = _scrollView / (_scrollView + _scrollMax);
+        var ratio = scroll.View / (scroll.View + scroll.Max);
         return Math.Clamp(trackH * ratio, minThumb, trackH);
     }
 

@@ -8,7 +8,7 @@ description: |-
 
   Chat 2 Vanilla keeps Chat 2's tabs, filters, input, autocomplete, links, and emotes.
   A "Vanilla style" option draws the main chat window with the game's own UI textures,
-  Axis font, channel colours, and log transparency. Turn it off for the original Chat 2 look.
+  Axis font, channel colors, and log transparency. Turn it off for the original Chat 2 look.
 
   This plugin's internal name is ChatTwoVanilla, so it can be installed next to Chat 2.
   Its IPC channels are ChatTwoVanilla.* and do not collide with ChatTwo.*.
@@ -21,6 +21,11 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.42.1**
+  - Each chat window keeps its own position and size while the vanilla resize grip is dragged
+  - Saving settings keeps popped-out tabs popped out
+  - English settings text uses color, not colour
+
   **Chat 2 Vanilla (fork, 2026-11-03)**
   - Toggleable vanilla chat-log style drawn in ImGui from the game's ULD textures
   - Renamed to ChatTwoVanilla so it can coexist with Chat 2 (separate commands and IPC)

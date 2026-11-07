@@ -47,6 +47,7 @@ public partial class ChatLog : Window, IChatWindow
 
     public readonly List<bool> PopOutDocked = [];
     public readonly HashSet<Guid> PopOutWindows = [];
+    private readonly Dictionary<Guid, Popout> PopOutById = [];
 
     /// <summary>First visible index in the bottom tab strip when there are more tabs than fit.</summary>
     private int _vanillaTabFirst;
@@ -1438,6 +1439,34 @@ public partial class ChatLog : Window, IChatWindow
 
             Plugin.WindowSystem.AddWindow(window);
             PopOutWindows.Add(tab.Identifier);
+            PopOutById[tab.Identifier] = window;
         }
+    }
+
+    /// <summary>
+    /// Settings replaces every tab object. Point each open pop-out at the replacement
+    /// that kept its identifier, and dock one whose PopOut flag is now clear.
+    /// </summary>
+    public void RebindPopOuts()
+    {
+        foreach (var (id, window) in PopOutById.ToArray())
+        {
+            var idx = Plugin.Config.Tabs.FindIndex(tab => tab.Identifier == id);
+            if (idx >= 0 && Plugin.Config.Tabs[idx].PopOut)
+            {
+                window.Retarget(Plugin.Config.Tabs[idx], idx);
+                continue;
+            }
+
+            window.CloseForConfigSwap();
+        }
+    }
+
+    internal void UnregisterPopOut(Popout window)
+    {
+        PopOutWindows.Remove(window.TabIdentifier);
+        PopOutById.Remove(window.TabIdentifier);
+        if (Plugin.WindowSystem.Windows.Contains(window))
+            Plugin.WindowSystem.RemoveWindow(window);
     }
 }

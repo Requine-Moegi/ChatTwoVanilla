@@ -18,8 +18,8 @@ namespace ChatTwo.Ui;
 public class Popout : Window, IChatWindow
 {
     private readonly Plugin Plugin;
-    private readonly Tab Tab;
-    private readonly int Idx;
+    private Tab Tab;
+    private int Idx;
 
     private long FrameTime; // set every frame
     private long LastActivityTime = Environment.TickCount64;
@@ -32,7 +32,9 @@ public class Popout : Window, IChatWindow
     public Vector2 LastWindowSize { get; set; } = Vector2.Zero;
     public HideState CurrentHideState { get; set; } = HideState.None;
 
-    public Popout(Plugin plugin, Tab tab, int idx) : base($"{tab.Name}##chat2vanilla-popout")
+    internal static string WindowTitle(Tab tab) => $"{tab.Name}###chat2vanilla-popout-{tab.Identifier:N}";
+
+    public Popout(Plugin plugin, Tab tab, int idx) : base(WindowTitle(tab))
     {
         Plugin = plugin;
         Tab = tab;
@@ -52,8 +54,34 @@ public class Popout : Window, IChatWindow
 
     public override void PreOpenCheck()
     {
-        if (!Tab.PopOut)
+        // Saving settings replaces every tab object. Follow the tab that kept this
+        // identifier so this window is not closed just because its old object was dropped.
+        var tabs = Plugin.Config.Tabs;
+        for (var i = 0; i < tabs.Count; i++)
+        {
+            if (tabs[i].Identifier != Tab.Identifier)
+                continue;
+
+            if (!ReferenceEquals(tabs[i], Tab))
+                Retarget(tabs[i], i);
+            break;
+        }
+
+        if (!Tab.PopOut || Plugin.Config.Tabs.All(t => t.Identifier != Tab.Identifier))
             IsOpen = false;
+    }
+
+    /// <summary>
+    /// Point this window at the tab object that replaced the one it was opened with.
+    /// The ImGui id stays on the tab identifier, so the saved position stays with this window.
+    /// </summary>
+    internal void Retarget(Tab tab, int idx)
+    {
+        Tab = tab;
+        Idx = idx;
+        var title = WindowTitle(tab);
+        if (WindowName != title)
+            WindowName = title;
     }
 
     public override bool DrawConditions()
@@ -249,14 +277,25 @@ public class Popout : Window, IChatWindow
             StyleModel.GetConfiguredStyles()?.FirstOrDefault(style => style.Name == Plugin.Config.ChosenStyle)?.Pop();
     }
 
+    internal Guid TabIdentifier => Tab.Identifier;
+
     public override void OnClose()
     {
         IsOpen = false;
-        Plugin.ChatLog.PopOutWindows.Remove(Tab.Identifier);
-        Plugin.WindowSystem.RemoveWindow(this);
+        Plugin.ChatLog.UnregisterPopOut(this);
 
         Tab.PopOut = false;
         Plugin.SaveConfig();
+    }
+
+    /// <summary>
+    /// Drop the window after a settings save already stored the new PopOut flag.
+    /// Does not write that flag again, so a tab that is still popped out cannot be docked by the close.
+    /// </summary>
+    internal void CloseForConfigSwap()
+    {
+        IsOpen = false;
+        Plugin.ChatLog.UnregisterPopOut(this);
     }
 
     private Dictionary<string, InputChannel> GetValidPopupChannels()
