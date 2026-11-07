@@ -60,6 +60,19 @@ public static class ImGuiUtil
                 handler.Click(chunk, payload, button);
     }
 
+    /// <summary>
+    /// Scale <see cref="ImGuiNative.CalcWordWrapPositionA"/> expects. It divides the wrap
+    /// width by this value and compares the result to the font's unscaled advances, so the
+    /// value is the current font's drawn size over its stored size, not Dalamud's global scale.
+    /// </summary>
+    private static float DrawnFontScale()
+    {
+        var basis = ImGui.GetFont().FontSize;
+        if (basis < 1f)
+            return 1f;
+        return ImGui.GetFontSize() / basis;
+    }
+
     public static unsafe void WrapText(string csText, Chunk chunk, PayloadHandler? handler, Vector4 defaultText, float lineWidth)
     {
         void Text(byte* text, byte* textEnd)
@@ -110,7 +123,8 @@ public static class ImGuiUtil
                 }
 
                 var widthLeft = ImGui.GetContentRegionAvail().X;
-                var endPrevLine = ImGuiNative.CalcWordWrapPositionA(ImGui.GetFont().Handle, ImGuiHelpers.GlobalScale, text, textEnd, widthLeft);
+                var fontScale = DrawnFontScale();
+                var endPrevLine = ImGuiNative.CalcWordWrapPositionA(ImGui.GetFont().Handle, fontScale, text, textEnd, widthLeft);
                 if (endPrevLine == null)
                     continue;
 
@@ -129,7 +143,7 @@ public static class ImGuiUtil
                     else
                     {
                         // check if the next bit is longer than the entire line width
-                        var wrapPos = ImGuiNative.CalcWordWrapPositionA(ImGui.GetFont().Handle, ImGuiHelpers.GlobalScale, text, firstSpace, lineWidth);
+                        var wrapPos = ImGuiNative.CalcWordWrapPositionA(ImGui.GetFont().Handle, fontScale, text, firstSpace, lineWidth);
 
                         // only go to next line is it's going to wrap at the space
                         if (wrapPos >= firstSpace)
@@ -147,7 +161,7 @@ public static class ImGuiUtil
                     if (*text == ' ')
                         ++text;
 
-                    var newEnd = ImGuiNative.CalcWordWrapPositionA(ImGui.GetFont().Handle, ImGuiHelpers.GlobalScale, text, textEnd, widthLeft);
+                    var newEnd = ImGuiNative.CalcWordWrapPositionA(ImGui.GetFont().Handle, fontScale, text, textEnd, widthLeft);
                     if (properBreak && newEnd == endPrevLine)
                         break;
 

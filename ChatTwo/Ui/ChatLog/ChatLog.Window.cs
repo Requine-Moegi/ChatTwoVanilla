@@ -668,9 +668,15 @@ public partial class ChatLog : Window, IChatWindow
         var compact = Plugin.Config.MoreCompactPretty;
         var oldItemSpacing = ImGui.GetStyle().ItemSpacing;
         var oldCellPadding = ImGui.GetStyle().CellPadding;
+        // Dalamud stores cell padding already multiplied by its global scale. Divide that
+        // back out so the gap between messages stays the same at scale 1 and scale 1.5.
+        var global = ImGuiHelpers.GlobalScale;
+        if (!float.IsFinite(global) || global < 0.05f)
+            global = 1f;
+        var cellPadY = compact ? 0f : oldCellPadding.Y / global;
 
         using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, Vector2.Zero))
-        using (ImRaii.PushStyle(ImGuiStyleVar.CellPadding, oldCellPadding with { Y = 0 }, compact))
+        using (ImRaii.PushStyle(ImGuiStyleVar.CellPadding, oldCellPadding with { Y = cellPadY }))
         {
             using var table = ImRaii.Table("timestamp-table", 2, ImGuiTableFlags.PreciseWidths);
             if (!table.Success)
@@ -679,7 +685,7 @@ public partial class ChatLog : Window, IChatWindow
             ImGui.TableSetupColumn("timestamps", ImGuiTableColumnFlags.WidthFixed);
             ImGui.TableSetupColumn("messages", ImGuiTableColumnFlags.WidthStretch);
 
-            DrawMessages(tab, handler, true, compact, oldCellPadding.Y);
+            DrawMessages(tab, handler, true, compact, cellPadY);
 
             using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, oldItemSpacing))
             using (ImRaii.PushStyle(ImGuiStyleVar.CellPadding, oldCellPadding))

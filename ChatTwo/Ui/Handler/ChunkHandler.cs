@@ -4,7 +4,6 @@ using ChatTwo.Ui.Style;
 using ChatTwo.Util;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
-using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 
 namespace ChatTwo.Ui.Handler;
@@ -55,8 +54,11 @@ public class ChunkHandler
 
         var texSize = new Vector2(iconTexture.Width, iconTexture.Height);
 
-        var sizeRatio = FontManager.GetFontSize() / entry.Height;
-        var size = new Vector2(entry.Width, entry.Height) * sizeRatio * ImGuiHelpers.GlobalScale;
+        // GetFontSize() is the line height actually drawn. Do not multiply by Dalamud's
+        // global scale: that made icon lines taller than the text at scale 1.5.
+        var line = ImGui.GetFontSize();
+        var sizeRatio = entry.Height > 0f ? line / entry.Height : 1f;
+        var size = new Vector2(entry.Width, entry.Height) * sizeRatio;
 
         var uv0 = new Vector2(entry.Left, entry.Top + 170) * 2 / texSize;
         var uv1 = new Vector2(entry.Left + entry.Width, entry.Top + entry.Height + 170) * 2 / texSize;
