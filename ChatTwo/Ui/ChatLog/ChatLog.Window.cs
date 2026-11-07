@@ -881,12 +881,18 @@ public partial class ChatLog : Window, IChatWindow
             previewH = Math.Clamp(Plugin.InputPreview.PreviewHeight, 0f, Math.Max(0f, room));
         }
 
+        var content = ChatChrome.LogContentRect(frame);
         var messages = frame.Messages;
         if (previewH > 0f)
         {
             var previewTop = frame.Label.Y - 4f * frame.Scale - previewH;
             messages = messages with { H = Math.Max(frame.Scale * 20f, previewTop - 4f * frame.Scale - messages.Y) };
         }
+
+        // Same inner edge as a pop-out. The list must not draw into part 12's border fade.
+        var messageTop = Math.Max(messages.Y, content.Y);
+        var messageBottom = Math.Min(messages.Y + messages.H, content.Y + content.H);
+        messages = new VanillaRect(messages.X, messageTop, messages.W, Math.Max(frame.Scale * 20f, messageBottom - messageTop));
 
         var (tabIndex, switched) = ResolveVanillaTab();
         var shown = tabIndex >= 0 ? Plugin.Config.Tabs[tabIndex] : null;
@@ -898,7 +904,7 @@ public partial class ChatLog : Window, IChatWindow
         {
             var tab = Plugin.Config.Tabs[tabIndex];
             tab.Unread = 0;
-            DrawMessageLog(tab, InputHandler.PayloadHandler, messages.H, switched, messages.W);
+            DrawMessageLog(tab, InputHandler.PayloadHandler, messages.H, switched, messages.W, content);
         }
         else
         {

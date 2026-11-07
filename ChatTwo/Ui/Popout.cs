@@ -206,9 +206,10 @@ public class Popout : Window, IChatWindow
         ChatChrome.BeginScrollDrag(frame.Scroll);
         ChatChrome.DrawLogBackground(frame, chromeAlpha, VanillaGameLook.TabLogBackgroundTint(Tab));
 
-        var messages = MessageListRect(frame);
+        var content = ChatChrome.LogContentRect(frame);
+        var messages = MessageListRect(frame, content);
         ImGui.SetCursorScreenPos(messages.Min);
-        Plugin.ChatLog.DrawMessageLog(Tab, InputHandler.PayloadHandler, messages.H, false, messages.W, frame.Background);
+        Plugin.ChatLog.DrawMessageLog(Tab, InputHandler.PayloadHandler, messages.H, false, messages.W, content);
         ChatChrome.PaintScrollbar(frame.Scroll);
 
         if (Tab.SupportsInput)
@@ -236,22 +237,23 @@ public class Popout : Window, IChatWindow
     }
 
     /// <summary>
-    /// The message child is drawn after the tab and input bars, so it must end at the log
-    /// panel. Extending it to the tab row paints glyphs over that chrome.
+    /// The message child is drawn after the tab and input bars. Its top and bottom stay
+    /// inside the log texture's opaque center, not the nine-grid's transparent border.
     /// </summary>
-    private VanillaRect MessageListRect(VanillaFrame frame)
+    private VanillaRect MessageListRect(VanillaFrame frame, VanillaRect content)
     {
         var messages = frame.Messages;
-        var panelBottom = frame.Background.Y + frame.Background.H;
+        var top = Math.Max(messages.Y, content.Y);
+        var bottom = Math.Min(messages.Y + messages.H, content.Y + content.H);
+        if (!Tab.SupportsInput)
+            bottom = content.Y + content.H;
+
         var chromeTop = frame.TabStrip.Y;
         if (Tab.SupportsInput)
             chromeTop = Math.Min(chromeTop, frame.Input.Y);
+        bottom = Math.Min(bottom, chromeTop);
 
-        var bottom = Math.Min(messages.Y + messages.H, Math.Min(panelBottom, chromeTop));
-        if (!Tab.SupportsInput)
-            bottom = Math.Min(panelBottom, chromeTop);
-
-        return messages with { H = Math.Max(frame.Scale * 20f, bottom - messages.Y) };
+        return new VanillaRect(messages.X, top, messages.W, Math.Max(frame.Scale * 20f, bottom - top));
     }
 
     private void DrawVanillaPopoutStrip(VanillaFrame frame)

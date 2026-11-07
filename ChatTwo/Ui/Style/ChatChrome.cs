@@ -401,6 +401,27 @@ public static class ChatChrome
         return Drawer.Draw(ImGui.GetWindowDrawList(), part, min, max, alpha, tint);
     }
 
+    /// <summary>
+    /// The log panel's opaque center. Part 12 is a nine-grid: the border slices are the
+    /// transparent padding and rounded fade, and only the center slice is the solid fill.
+    /// Edges match <see cref="VanillaDrawer.TrySlice"/>, which is what draws the texture.
+    /// </summary>
+    public static VanillaRect LogContentRect(VanillaFrame frame)
+    {
+        var outer = frame.Background;
+        Catalog.EnsureLoaded();
+        if (VanillaDrawer.TrySlice(Catalog.Background, outer.Min, outer.Max, frame.Scale, out var x, out var y))
+            return new VanillaRect(x[1], y[1], Math.Max(1f, x[2] - x[1]), Math.Max(1f, y[2] - y[1]));
+
+        // ChatLog.uld node 14 / part 12 uses 20px on every side when the file has not loaded.
+        var inset = 20f * frame.Scale;
+        var left = MathF.Round(outer.X + inset);
+        var top = MathF.Round(outer.Y + inset);
+        var right = MathF.Round(outer.X + outer.W - inset);
+        var bottom = MathF.Round(outer.Y + outer.H - inset);
+        return new VanillaRect(left, top, Math.Max(1f, right - left), Math.Max(1f, bottom - top));
+    }
+
     public static void DrawLogBackground(VanillaFrame frame, float? permeation = null, Vector4? tint = null)
     {
         Catalog.EnsureLoaded();

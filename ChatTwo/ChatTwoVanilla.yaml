@@ -21,6 +21,9 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.10**
+  - Pop-out text stays inside the solid part of the log background, clear of the faded border.
+
   **1.43.9**
   - The import confirmation is a normal window. The screen no longer dims behind it.
   - Pop-out message text stays inside the log panel instead of drawing over the bottom bar.
