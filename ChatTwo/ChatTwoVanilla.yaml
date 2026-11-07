@@ -21,6 +21,9 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.2**
+  - The channel tint fills only the center slice of the input frame. The border is drawn on top, so it no longer covers the rim.
+
   **1.43.1**
   - Channel tint colors the inside of the input box. The frame stays the normal color.
   - A tab's log color is drawn over the dark log texture, so it shows, and it still follows the opacity setting.

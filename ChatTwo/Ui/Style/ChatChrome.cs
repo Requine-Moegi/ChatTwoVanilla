@@ -430,38 +430,30 @@ public static class ChatChrome
         Catalog.EnsureLoaded();
         var drawList = ImGui.GetWindowDrawList();
         var alpha = permeation ?? VanillaGameLook.LogInputAlpha();
-        // The frame stays the game color. Multiplying the whole part only colored its light rim.
-        var drew = Drawer.Draw(drawList, Catalog.InputBackground, rect.Min, rect.Max, alpha, null);
-        if (!drew)
+        var part = Catalog.InputBackground;
+        // The center of the input texture is near-black, so a multiply never shows there, and a
+        // rounded rect drawn on top of the frame covers the rim. Fill the center slice first.
+        // The eight border slices are then drawn on top and cover any shared edge.
+        var skipCenter = false;
+        if (tint != null && VanillaDrawer.TrySlice(part, rect.Min, rect.Max, ImGuiHelpers.GlobalScale, out var dstX, out var dstY))
         {
-            var rounding = rect.H * 0.45f;
-            drawList.AddRectFilled(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.02f, 0.02f, 0.02f, 0.92f * alpha)), rounding);
-            drawList.AddRect(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.75f, 0.75f, 0.72f, 0.9f * alpha)), rounding, ImDrawFlags.None, 1.25f);
+            var c0 = new Vector2(dstX[1], dstY[1]);
+            var c1 = new Vector2(dstX[2], dstY[2]);
+            if (c1.X - c0.X >= 0.5f && c1.Y - c0.Y >= 0.5f)
+            {
+                var fill = new Vector4(tint.Value.X, tint.Value.Y, tint.Value.Z, Math.Clamp(alpha, 0f, 1f) * Math.Clamp(tint.Value.W, 0f, 1f));
+                drawList.AddRectFilled(c0, c1, ImGui.GetColorU32(fill));
+                skipCenter = true;
+            }
         }
 
-        if (tint != null)
-            DrawInputInterior(drawList, rect, Catalog.InputBackground, alpha, tint.Value);
-    }
-
-    /// <summary>
-    /// Filled round-rect inside the input nine-grid. The corner inset is the opaque rim;
-    /// the rounding is the nine-grid corner minus that rim, so the fill follows the inner curve.
-    /// </summary>
-    private static void DrawInputInterior(ImDrawListPtr drawList, VanillaRect rect, VanillaPart? part, float alpha, Vector4 color)
-    {
-        var scale = ImGuiHelpers.GlobalScale;
-        var corner = part is { IsNineGrid: true } ? Math.Max(part.Left, Math.Max(part.Top, Math.Max(part.Right, part.Bottom))) : 13;
-        if (corner <= 0)
-            corner = 13;
-        var stroke = MathF.Max(2f, corner * 0.2f) * scale;
-        var min = new Vector2(rect.X + stroke, rect.Y + stroke);
-        var max = new Vector2(rect.X + rect.W - stroke, rect.Y + rect.H - stroke);
-        if (max.X - min.X < 2f || max.Y - min.Y < 2f)
+        if (Drawer.Draw(drawList, part, rect.Min, rect.Max, alpha, null, skipCenter: skipCenter))
             return;
 
-        var rounding = Math.Clamp(corner * scale - stroke, 0f, (max.Y - min.Y) * 0.5f);
-        var fill = new Vector4(color.X, color.Y, color.Z, Math.Clamp(alpha, 0f, 1f) * Math.Clamp(color.W, 0f, 1f));
-        drawList.AddRectFilled(min, max, ImGui.GetColorU32(fill), rounding);
+        var rounding = rect.H * 0.45f;
+        if (!skipCenter)
+            drawList.AddRectFilled(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.02f, 0.02f, 0.02f, 0.92f * alpha)), rounding);
+        drawList.AddRect(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.75f, 0.75f, 0.72f, 0.9f * alpha)), rounding, ImDrawFlags.None, 1.25f);
     }
 
     /// <summary>
