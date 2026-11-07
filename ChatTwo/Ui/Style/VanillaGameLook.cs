@@ -182,9 +182,9 @@ public static class VanillaGameLook
     }
 
     /// <summary>
-    /// Dark fill for the inside of the input box, mixed toward the channel hue by the intensity
-    /// slider. Null leaves the box alone: the setting is off, the intensity is zero, or the channel
-    /// is white or gray (Say's default). The frame is drawn separately and is not multiplied by this.
+    /// Color written into the dark pixels of the input texture, mixed toward the channel hue by
+    /// the intensity slider. Null leaves the texture alone: the setting is off, the intensity is
+    /// zero, or the channel is white or gray (Say's default). The light rim is not recolored.
     /// </summary>
     public static Vector4? InputBackgroundTint(ChatType type, float intensityPercent)
     {

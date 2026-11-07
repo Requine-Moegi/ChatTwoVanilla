@@ -425,90 +425,24 @@ public static class ChatChrome
             DrawLogOverlay(drawList, rect, Catalog.Background, frame.Scale, alphaArg, tint.Value);
     }
 
-    /// <summary>
-    /// Visible rim of ChatLog part 17, in design pixels, measured from the part PNG.
-    /// The texture is 28×28. Outside the light rim is a transparent margin. The dark
-    /// interior starts 3px in from the sides, 4px from the top, and 5px from the bottom.
-    /// The nine-grid offsets are 13 and are the corner slices, not this rim.
-    /// A 6px corner radius stays inside that inner edge at the top and the bottom.
-    /// </summary>
-    private const float InputRimLeft = 3f;
-    private const float InputRimRight = 3f;
-    private const float InputRimTop = 4f;
-    private const float InputRimBottom = 5f;
-    private const float InputRimRadius = 6f;
-
     public static void DrawInputFrame(VanillaRect rect, float? permeation = null, Vector4? tint = null)
     {
         Catalog.EnsureLoaded();
         var drawList = ImGui.GetWindowDrawList();
         var alpha = permeation ?? VanillaGameLook.LogInputAlpha();
         var part = Catalog.InputBackground;
-        var scale = ImGuiHelpers.GlobalScale;
-        // Ceiling keeps the fill on the interior side of the measured rim when a
-        // half-pixel would otherwise round outward onto the frame.
-        float Snap(float design) => MathF.Ceiling(design * scale - 0.001f);
 
-        var drewFrame = Drawer.Draw(drawList, part, rect.Min, rect.Max, alpha);
-        if (tint == null)
-        {
-            if (drewFrame)
-                return;
-            var rounding = rect.H * 0.45f;
-            drawList.AddRectFilled(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.02f, 0.02f, 0.02f, 0.92f * alpha)), rounding);
-            drawList.AddRect(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.75f, 0.75f, 0.72f, 0.9f * alpha)), rounding, ImDrawFlags.None, 1.25f);
+        // The tint is the part texture with only its dark pixels recolored. Same rect, same
+        // nine-grid, same draw list as the untinted frame. Nothing else is filled in.
+        if (tint != null && Drawer.DrawInteriorTinted(drawList, part, rect.Min, rect.Max, alpha, tint.Value))
             return;
-        }
 
-        var left = Snap(InputRimLeft);
-        var right = Snap(InputRimRight);
-        var top = Snap(InputRimTop);
-        var bottom = Snap(InputRimBottom);
-        var fillMin = new Vector2(rect.Min.X + left, rect.Min.Y + top);
-        var fillMax = new Vector2(rect.Max.X - right, rect.Max.Y - bottom);
-        if (fillMax.X - fillMin.X >= 1f && fillMax.Y - fillMin.Y >= 1f)
-        {
-            var radius = MathF.Min(Snap(InputRimRadius), MathF.Min(fillMax.X - fillMin.X, fillMax.Y - fillMin.Y) * 0.5f);
-            var fill = new Vector4(
-                tint.Value.X,
-                tint.Value.Y,
-                tint.Value.Z,
-                Math.Clamp(alpha, 0f, 1f) * Math.Clamp(tint.Value.W, 0f, 1f));
-            // The part's interior texels are opaque black, so this fill is what colors
-            // the box. It is inset to the inner edge of the light rim.
-            drawList.AddRectFilled(fillMin, fillMax, ImGui.GetColorU32(fill), radius);
-        }
-
-        // Paint the real rim again, on top of the fill, so antialiasing at the rounded
-        // edge cannot color the frame. The clip is only the measured rim band. The
-        // black interior is left as the fill.
-        if (drewFrame)
-        {
-            DrawInputRimBand(drawList, part, rect, alpha, left, right, top, bottom);
+        if (Drawer.Draw(drawList, part, rect.Min, rect.Max, alpha))
             return;
-        }
 
-        var fallbackRadius = MathF.Min(rect.H * 0.45f, rect.H * 0.5f);
-        drawList.AddRect(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.75f, 0.75f, 0.72f, 0.9f * alpha)), fallbackRadius, ImDrawFlags.None, 1.25f);
-    }
-
-    private static void DrawInputRimBand(ImDrawListPtr drawList, VanillaPart? part, VanillaRect rect, float alpha, float left, float right, float top, float bottom)
-    {
-        void Band(Vector2 min, Vector2 max)
-        {
-            if (max.X - min.X < 0.5f || max.Y - min.Y < 0.5f)
-                return;
-            drawList.PushClipRect(min, max, true);
-            Drawer.Draw(drawList, part, rect.Min, rect.Max, alpha);
-            drawList.PopClipRect();
-        }
-
-        var min = rect.Min;
-        var max = rect.Max;
-        Band(min, new Vector2(max.X, min.Y + top));
-        Band(new Vector2(min.X, max.Y - bottom), max);
-        Band(new Vector2(min.X, min.Y + top), new Vector2(min.X + left, max.Y - bottom));
-        Band(new Vector2(max.X - right, min.Y + top), new Vector2(max.X, max.Y - bottom));
+        var rounding = rect.H * 0.45f;
+        drawList.AddRectFilled(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.02f, 0.02f, 0.02f, 0.92f * alpha)), rounding);
+        drawList.AddRect(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.75f, 0.75f, 0.72f, 0.9f * alpha)), rounding, ImDrawFlags.None, 1.25f);
     }
 
     /// <summary>

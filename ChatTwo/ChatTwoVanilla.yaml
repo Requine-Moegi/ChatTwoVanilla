@@ -21,6 +21,9 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.4**
+  - The channel tint recolors the dark pixels of the input texture. The light rim is unchanged, and no extra fill is drawn.
+
   **1.43.3**
   - The channel tint fills the dark interior of the input box and stops at the visible rim. The rim is drawn on top of that edge.
 

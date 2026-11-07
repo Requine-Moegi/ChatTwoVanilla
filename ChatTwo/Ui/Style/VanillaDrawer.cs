@@ -1,7 +1,10 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Textures;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
+using Dalamud.Utility;
+using Lumina.Data.Files;
 
 namespace ChatTwo.Ui.Style;
 
@@ -12,8 +15,18 @@ namespace ChatTwo.Ui.Style;
 public sealed class VanillaDrawer
 {
     private readonly Dictionary<string, string?> _paths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<int, IDalamudTextureWrap> _inputTints = new();
+    private string? _inputTintKey;
+    private byte[]? _inputTintSource;
+    private int _inputTintWidth;
+    private int _inputTintHeight;
+    private bool _inputTintHighResolution;
 
-    public void InvalidatePaths() => _paths.Clear();
+    public void InvalidatePaths()
+    {
+        _paths.Clear();
+        ClearInputTints();
+    }
 
     public bool Draw(ImDrawListPtr drawList, VanillaPart? part, Vector2 min, Vector2 max, float alpha, Vector4? extraTint = null, bool? flipH = null, bool skipCenter = false)
     {
@@ -55,33 +68,144 @@ public sealed class VanillaDrawer
         var right = Math.Clamp((int)part.Right, 0, part.W / 2);
         var top = Math.Clamp((int)part.Top, 0, part.H / 2);
         var bottom = Math.Clamp((int)part.Bottom, 0, part.H / 2);
-        var leftPx = left * uiScale;
-        var rightPx = right * uiScale;
-        var topPx = top * uiScale;
-        var bottomPx = bottom * uiScale;
+        return InputTextureTint.Slice(left, right, top, bottom, min.X, min.Y, max.X, max.Y, uiScale, out dstX, out dstY);
+    }
 
-        if (leftPx + rightPx > destW && leftPx + rightPx > 0f)
-        {
-            var fit = destW / (leftPx + rightPx);
-            leftPx *= fit;
-            rightPx *= fit;
-        }
+    /// <summary>
+    /// Draws the input part with its dark pixels replaced by <paramref name="tint"/>. The light rim
+    /// is the original texture. The result is cached per color. A miss falls through so the caller
+    /// can draw the untinted part.
+    /// </summary>
+    public bool DrawInteriorTinted(ImDrawListPtr drawList, VanillaPart? part, Vector2 min, Vector2 max, float alpha, Vector4 tint)
+    {
+        if (part == null || max.X - min.X < 1f || max.Y - min.Y < 1f)
+            return false;
 
-        if (topPx + bottomPx > destH && topPx + bottomPx > 0f)
-        {
-            var fit = destH / (topPx + bottomPx);
-            topPx *= fit;
-            bottomPx *= fit;
-        }
+        if (!TryGetInteriorWrap(part, tint, out var wrap, out var highResolution) || wrap == null)
+            return false;
 
-        float Px(float value) => MathF.Round(value);
-        dstX = [Px(min.X), Px(min.X + leftPx), Px(max.X - rightPx), Px(max.X)];
-        dstY = [Px(min.Y), Px(min.Y + topPx), Px(max.Y - bottomPx), Px(max.Y)];
-        if (dstX[1] > dstX[2])
-            dstX[1] = dstX[2] = (dstX[1] + dstX[2]) * 0.5f;
-        if (dstY[1] > dstY[2])
-            dstY[1] = dstY[2] = (dstY[1] + dstY[2]) * 0.5f;
+        var multiply = part.Multiply;
+        var color = ImGui.GetColorU32(new Vector4(multiply.X, multiply.Y, multiply.Z, part.NodeAlpha * Math.Clamp(alpha, 0f, 1f)));
+        DrawPart(drawList, wrap, highResolution, part, min, max, color, part.FlipH, false, 0, 0);
         return true;
+    }
+
+    private bool TryGetInteriorWrap(VanillaPart part, Vector4 tint, out IDalamudTextureWrap? wrap, out bool highResolution)
+    {
+        wrap = null;
+        highResolution = false;
+        var path = ResolvePath(part);
+        if (string.IsNullOrEmpty(path) || !EnsureInputTintSource(part, path))
+            return false;
+
+        highResolution = _inputTintHighResolution;
+        var key = PackTint(tint);
+        if (_inputTints.TryGetValue(key, out wrap) && wrap != null)
+            return true;
+
+        var pixels = (byte[])_inputTintSource!.Clone();
+        InputTextureTint.Apply(pixels, new Vector3(tint.X, tint.Y, tint.Z));
+        try
+        {
+            wrap = Plugin.TextureProvider.CreateFromRaw(
+                RawImageSpecification.Rgba32(_inputTintWidth, _inputTintHeight),
+                pixels,
+                "ChatTwoVanilla input tint");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(ex, "Could not upload the tinted input texture");
+            wrap = null;
+            return false;
+        }
+
+        while (_inputTints.Count >= 8)
+        {
+            var drop = _inputTints.Keys.First();
+            _inputTints[drop].Dispose();
+            _inputTints.Remove(drop);
+        }
+
+        _inputTints[key] = wrap;
+        return true;
+    }
+
+    private bool EnsureInputTintSource(VanillaPart part, string path)
+    {
+        var key = $"{path}|{part.U}|{part.V}|{part.W}|{part.H}";
+        if (_inputTintSource != null && _inputTintKey == key)
+            return true;
+
+        TexFile? file;
+        try
+        {
+            file = Plugin.DataManager.GetFile<TexFile>(path);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(ex, "Could not read the input texture");
+            return false;
+        }
+
+        if (file == null)
+            return false;
+
+        byte[] rgba;
+        try
+        {
+            rgba = file.GetRgbaImageData();
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(ex, "Could not decode the input texture");
+            return false;
+        }
+
+        var width = file.Header.Width;
+        var height = file.Header.Height;
+        if (width <= 0 || height <= 0 || rgba.Length < width * height * 4)
+            return false;
+
+        var scale = 1;
+        var highResolution = path.Contains("_hr1", StringComparison.OrdinalIgnoreCase);
+        if (highResolution && (part.U + part.W) * 2 <= width && (part.V + part.H) * 2 <= height)
+            scale = 2;
+
+        var cropW = part.W * scale;
+        var cropH = part.H * scale;
+        var x0 = part.U * scale;
+        var y0 = part.V * scale;
+        if (x0 < 0 || y0 < 0 || x0 + cropW > width || y0 + cropH > height || cropW <= 0 || cropH <= 0)
+            return false;
+
+        var crop = new byte[cropW * cropH * 4];
+        for (var y = 0; y < cropH; y++)
+            Buffer.BlockCopy(rgba, ((y0 + y) * width + x0) * 4, crop, y * cropW * 4, cropW * 4);
+
+        ClearInputTints();
+        _inputTintSource = crop;
+        _inputTintWidth = cropW;
+        _inputTintHeight = cropH;
+        _inputTintHighResolution = scale == 2;
+        _inputTintKey = key;
+        return true;
+    }
+
+    private void ClearInputTints()
+    {
+        foreach (var wrap in _inputTints.Values)
+            wrap.Dispose();
+        _inputTints.Clear();
+        _inputTintSource = null;
+        _inputTintKey = null;
+    }
+
+    private static int PackTint(Vector4 tint)
+    {
+        var r = (int)Math.Clamp((int)MathF.Round(tint.X * 255f), 0, 255);
+        var g = (int)Math.Clamp((int)MathF.Round(tint.Y * 255f), 0, 255);
+        var b = (int)Math.Clamp((int)MathF.Round(tint.Z * 255f), 0, 255);
+        return (r << 16) | (g << 8) | b;
     }
 
     public string? ResolvePath(VanillaPart part)
@@ -121,13 +245,15 @@ public sealed class VanillaDrawer
         return true;
     }
 
-    private static void DrawPart(ImDrawListPtr drawList, IDalamudTextureWrap tex, bool highResolution, VanillaPart part, Vector2 min, Vector2 max, uint color, bool flipH, bool skipCenter)
+    private static void DrawPart(ImDrawListPtr drawList, IDalamudTextureWrap tex, bool highResolution, VanillaPart part, Vector2 min, Vector2 max, uint color, bool flipH, bool skipCenter, int uvU = -1, int uvV = -1)
     {
+        var originU = uvU >= 0 ? uvU : part.U;
+        var originV = uvV >= 0 ? uvV : part.V;
         var uvScale = 1f;
         if (highResolution)
         {
-            var uvRight = (part.U + part.W) * 2f;
-            var uvBottom = (part.V + part.H) * 2f;
+            var uvRight = (originU + part.W) * 2f;
+            var uvBottom = (originV + part.H) * 2f;
             if (uvRight <= tex.Width + 0.5f && uvBottom <= tex.Height + 0.5f)
                 uvScale = 2f;
         }
@@ -136,11 +262,11 @@ public sealed class VanillaDrawer
 
         if (!part.IsNineGrid || part.Left <= 0 && part.Right <= 0 && part.Top <= 0 && part.Bottom <= 0)
         {
-            float u0 = part.U;
-            float u1 = part.U + part.W;
+            float u0 = originU;
+            float u1 = originU + part.W;
             if (flipH)
                 (u0, u1) = (u1, u0);
-            drawList.AddImage(tex.Handle, min, max, Uv(u0, part.V), Uv(u1, part.V + part.H), color);
+            drawList.AddImage(tex.Handle, min, max, Uv(u0, originV), Uv(u1, originV + part.H), color);
             return;
         }
 
@@ -151,8 +277,8 @@ public sealed class VanillaDrawer
         var right = Math.Clamp((int)part.Right, 0, part.W / 2);
         var top = Math.Clamp((int)part.Top, 0, part.H / 2);
         var bottom = Math.Clamp((int)part.Bottom, 0, part.H / 2);
-        float[] srcX = [part.U, part.U + left, part.U + part.W - right, part.U + part.W];
-        float[] srcY = [part.V, part.V + top, part.V + part.H - bottom, part.V + part.H];
+        float[] srcX = [originU, originU + left, originU + part.W - right, originU + part.W];
+        float[] srcY = [originV, originV + top, originV + part.H - bottom, originV + part.H];
 
         for (var y = 0; y < 3; y++)
         {
