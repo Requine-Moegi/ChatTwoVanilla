@@ -31,6 +31,8 @@ public sealed class Tabs : ISettingsTab
         if (ImGuiUtil.IconButton(FontAwesomeIcon.Plus, tooltip: Language.Options_Tabs_Add))
             ImGui.OpenPopup(addTabPopup);
 
+        GameChatTabImportUi.Draw(Mutable);
+
         using (var popup = ImRaii.Popup(addTabPopup))
         {
             if (popup)

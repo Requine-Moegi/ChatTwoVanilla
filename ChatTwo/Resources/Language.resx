@@ -1544,6 +1544,33 @@ Your old database can still be recovered, please contact the plugin author for h
     <data name="Options_VanillaStyle_ResizeNote" xml:space="preserve">
         <value>In vanilla style, resizing uses the corner grip. These checkboxes are also on the Chat log tab, where they control the original window.</value>
     </data>
+    <data name="Options_Tabs_ImportGame_Name" xml:space="preserve">
+        <value>Import tabs from game chat</value>
+    </data>
+    <data name="Options_Tabs_ImportGame_Description" xml:space="preserve">
+        <value>Read the four tabs from the game's live chat log: each name, and which messages that tab shows. Nothing changes until you choose append or replace. Save settings to keep the result.</value>
+    </data>
+    <data name="Options_Tabs_ImportGame_Prompt" xml:space="preserve">
+        <value>These are the game's four chat tabs. Append adds them after the tabs in this draft. Replace removes the tabs in this draft, including any that are popped out, and puts these in their place.</value>
+    </data>
+    <data name="Options_Tabs_ImportGame_Append" xml:space="preserve">
+        <value>Append</value>
+    </data>
+    <data name="Options_Tabs_ImportGame_Replace" xml:space="preserve">
+        <value>Replace existing tabs</value>
+    </data>
+    <data name="Options_Tabs_ImportGame_Cancel" xml:space="preserve">
+        <value>Cancel</value>
+    </data>
+    <data name="Options_Tabs_ImportGame_Appended" xml:space="preserve">
+        <value>The game tabs were added to this draft. Save settings to keep them.</value>
+    </data>
+    <data name="Options_Tabs_ImportGame_Replaced" xml:space="preserve">
+        <value>This draft's tabs were replaced with the game tabs. Save settings to keep them.</value>
+    </data>
+    <data name="Options_Tabs_ImportGame_Failed" xml:space="preserve">
+        <value>The game chat tabs could not be read. Nothing was changed.</value>
+    </data>
     <data name="ChatLog_FocusInput" xml:space="preserve">
         <value>Focus chat input</value>
     </data>

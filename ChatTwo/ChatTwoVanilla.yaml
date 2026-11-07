@@ -27,6 +27,7 @@ changelog: |-
   - Log background opacity follows the game, or a 0–100% override
   - Vanilla Style settings tab
   - Vanilla mode keeps the game's Axis font at the log font size, including pop-outs
+  - Import the game's four chat tabs, by name and channel filter, after a confirmation
 
   **1.42.1**
   - Each chat window keeps its own position and size while the vanilla resize grip is dragged

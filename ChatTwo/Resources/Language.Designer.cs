@@ -4278,6 +4278,60 @@ namespace ChatTwo.Resources {
             }
         }
 
+        internal static string Options_Tabs_ImportGame_Name {
+            get {
+                return ResourceManager.GetString("Options_Tabs_ImportGame_Name", resourceCulture);
+            }
+        }
+
+        internal static string Options_Tabs_ImportGame_Description {
+            get {
+                return ResourceManager.GetString("Options_Tabs_ImportGame_Description", resourceCulture);
+            }
+        }
+
+        internal static string Options_Tabs_ImportGame_Prompt {
+            get {
+                return ResourceManager.GetString("Options_Tabs_ImportGame_Prompt", resourceCulture);
+            }
+        }
+
+        internal static string Options_Tabs_ImportGame_Append {
+            get {
+                return ResourceManager.GetString("Options_Tabs_ImportGame_Append", resourceCulture);
+            }
+        }
+
+        internal static string Options_Tabs_ImportGame_Replace {
+            get {
+                return ResourceManager.GetString("Options_Tabs_ImportGame_Replace", resourceCulture);
+            }
+        }
+
+        internal static string Options_Tabs_ImportGame_Cancel {
+            get {
+                return ResourceManager.GetString("Options_Tabs_ImportGame_Cancel", resourceCulture);
+            }
+        }
+
+        internal static string Options_Tabs_ImportGame_Appended {
+            get {
+                return ResourceManager.GetString("Options_Tabs_ImportGame_Appended", resourceCulture);
+            }
+        }
+
+        internal static string Options_Tabs_ImportGame_Replaced {
+            get {
+                return ResourceManager.GetString("Options_Tabs_ImportGame_Replaced", resourceCulture);
+            }
+        }
+
+        internal static string Options_Tabs_ImportGame_Failed {
+            get {
+                return ResourceManager.GetString("Options_Tabs_ImportGame_Failed", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to Focus chat input.
         /// </summary>
