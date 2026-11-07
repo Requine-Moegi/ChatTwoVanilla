@@ -301,8 +301,8 @@ public class Tab
     public bool CanResize = true;
 
     /// <summary>
-    /// When true, the vanilla log background for this tab is multiplied by <see cref="LogBackgroundColor"/>.
-    /// Off leaves the game's log texture untinted. Saved with the tab and used in the main window and a pop-out.
+    /// When true, <see cref="LogBackgroundColor"/> is laid over this tab's vanilla log.
+    /// Off leaves the game's log texture unchanged. Saved with the tab and used in the main window and a pop-out.
     /// </summary>
     public bool LogBackgroundTint;
 

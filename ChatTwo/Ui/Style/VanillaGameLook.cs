@@ -96,7 +96,8 @@ public static class VanillaGameLook
     }
 
     /// <summary>
-    /// Multiply color for one tab's log background. Null leaves the nine-grid untinted.
+    /// Color laid over one tab's log background. Null leaves the log texture alone.
+    /// The game's log texture is nearly black, so this is not a multiply.
     /// </summary>
     public static Vector4? TabLogBackgroundTint(Tab? tab)
     {
@@ -181,8 +182,9 @@ public static class VanillaGameLook
     }
 
     /// <summary>
-    /// A near-white multiply color that carries the channel hue. Null leaves the input box untinted:
-    /// the setting is off, the intensity is zero, or the channel is white or gray (Say's default).
+    /// Dark fill for the inside of the input box, mixed toward the channel hue by the intensity
+    /// slider. Null leaves the box alone: the setting is off, the intensity is zero, or the channel
+    /// is white or gray (Say's default). The frame is drawn separately and is not multiplied by this.
     /// </summary>
     public static Vector4? InputBackgroundTint(ChatType type, float intensityPercent)
     {
@@ -213,8 +215,12 @@ public static class VanillaGameLook
             hue = (r - g) / delta + 4f;
         hue = ((hue % 6f) + 6f) % 6f / 6f;
 
-        // Value stays 1 so this only nudges a dark texture. Saturation is a fraction of the slider.
-        return new Vector4(HsvToRgb(hue, 0.55f * amount, 1f), 1f);
+        // The untinted box is nearly black. Intensity moves that floor toward a dark channel hue
+        // so the interior reads as that channel without turning into a bright field.
+        var floor = new Vector3(0.035f, 0.035f, 0.04f);
+        var vivid = HsvToRgb(hue, 0.9f, 0.34f);
+        var rgb = Vector3.Lerp(floor, vivid, amount);
+        return new Vector4(rgb, 1f);
     }
 
     private static Vector3 HsvToRgb(float h, float s, float v)

@@ -21,6 +21,10 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.1**
+  - Channel tint colors the inside of the input box. The frame stays the normal color.
+  - A tab's log color is drawn over the dark log texture, so it shows, and it still follows the opacity setting.
+
   **1.43.0**
   - Optional channel tint on the vanilla input box, off by default
   - Each tab can tint its vanilla log background, saved with the tab

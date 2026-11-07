@@ -407,32 +407,86 @@ public static class ChatChrome
         var rect = frame.Background;
         var drawList = ImGui.GetWindowDrawList();
         var alphaArg = permeation ?? VanillaGameLook.LogBackgroundOpacityFactor();
-        if (Drawer.Draw(drawList, Catalog.Background, rect.Min, rect.Max, alphaArg, tint))
-            return;
+        // The log texture stays its own color. A multiply cannot tint it: the texels are nearly black.
+        var drew = Drawer.Draw(drawList, Catalog.Background, rect.Min, rect.Max, alphaArg, null);
+        if (!drew)
+        {
+            // Soft edge, no hard border. The real part is a 20px fade into black.
+            var fade = 18f * frame.Scale;
+            var alpha = 0.5f * alphaArg;
+            drawList.AddRectFilled(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0f, 0f, 0f, alpha * 0.35f)));
+            var inner = new Vector2(rect.X + fade, rect.Y + fade);
+            var innerMax = new Vector2(rect.X + rect.W - fade, rect.Y + rect.H - fade);
+            if (innerMax.X > inner.X && innerMax.Y > inner.Y)
+                drawList.AddRectFilled(inner, innerMax, ImGui.GetColorU32(new Vector4(0f, 0f, 0f, alpha)));
+        }
 
-        // Soft edge, no hard border. The real part is a 20px fade into black.
-        var fade = 18f * frame.Scale;
-        var alpha = 0.5f * alphaArg;
-        drawList.AddRectFilled(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0f, 0f, 0f, alpha * 0.35f)));
-        var inner = new Vector2(rect.X + fade, rect.Y + fade);
-        var innerMax = new Vector2(rect.X + rect.W - fade, rect.Y + rect.H - fade);
-        if (innerMax.X > inner.X && innerMax.Y > inner.Y)
-            drawList.AddRectFilled(inner, innerMax, ImGui.GetColorU32(new Vector4(0f, 0f, 0f, alpha)));
+        if (tint != null)
+            DrawLogOverlay(drawList, rect, Catalog.Background, frame.Scale, alphaArg, tint.Value);
     }
 
     public static void DrawInputFrame(VanillaRect rect, float? permeation = null, Vector4? tint = null)
     {
         Catalog.EnsureLoaded();
         var drawList = ImGui.GetWindowDrawList();
-        if (Drawer.Draw(drawList, Catalog.InputBackground, rect.Min, rect.Max, permeation ?? VanillaGameLook.LogInputAlpha(), tint))
+        var alpha = permeation ?? VanillaGameLook.LogInputAlpha();
+        // The frame stays the game color. Multiplying the whole part only colored its light rim.
+        var drew = Drawer.Draw(drawList, Catalog.InputBackground, rect.Min, rect.Max, alpha, null);
+        if (!drew)
+        {
+            var rounding = rect.H * 0.45f;
+            drawList.AddRectFilled(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.02f, 0.02f, 0.02f, 0.92f * alpha)), rounding);
+            drawList.AddRect(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.75f, 0.75f, 0.72f, 0.9f * alpha)), rounding, ImDrawFlags.None, 1.25f);
+        }
+
+        if (tint != null)
+            DrawInputInterior(drawList, rect, Catalog.InputBackground, alpha, tint.Value);
+    }
+
+    /// <summary>
+    /// Filled round-rect inside the input nine-grid. The corner inset is the opaque rim;
+    /// the rounding is the nine-grid corner minus that rim, so the fill follows the inner curve.
+    /// </summary>
+    private static void DrawInputInterior(ImDrawListPtr drawList, VanillaRect rect, VanillaPart? part, float alpha, Vector4 color)
+    {
+        var scale = ImGuiHelpers.GlobalScale;
+        var corner = part is { IsNineGrid: true } ? Math.Max(part.Left, Math.Max(part.Top, Math.Max(part.Right, part.Bottom))) : 13;
+        if (corner <= 0)
+            corner = 13;
+        var stroke = MathF.Max(2f, corner * 0.2f) * scale;
+        var min = new Vector2(rect.X + stroke, rect.Y + stroke);
+        var max = new Vector2(rect.X + rect.W - stroke, rect.Y + rect.H - stroke);
+        if (max.X - min.X < 2f || max.Y - min.Y < 2f)
             return;
 
-        var rounding = rect.H * 0.45f;
-        var fill = new Vector4(0.02f, 0.02f, 0.02f, 0.92f);
-        if (tint != null)
-            fill = new Vector4(fill.X * tint.Value.X, fill.Y * tint.Value.Y, fill.Z * tint.Value.Z, fill.W);
-        drawList.AddRectFilled(rect.Min, rect.Max, ImGui.GetColorU32(fill), rounding);
-        drawList.AddRect(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.75f, 0.75f, 0.72f, 0.9f)), rounding, ImDrawFlags.None, 1.25f);
+        var rounding = Math.Clamp(corner * scale - stroke, 0f, (max.Y - min.Y) * 0.5f);
+        var fill = new Vector4(color.X, color.Y, color.Z, Math.Clamp(alpha, 0f, 1f) * Math.Clamp(color.W, 0f, 1f));
+        drawList.AddRectFilled(min, max, ImGui.GetColorU32(fill), rounding);
+    }
+
+    /// <summary>
+    /// Color laid over the log panel. Alpha follows the same permeation and texture alpha as the
+    /// nine-grid, so the opacity slider fades the tint with the panel. No tint leaves this undrawn.
+    /// </summary>
+    private static void DrawLogOverlay(ImDrawListPtr drawList, VanillaRect rect, VanillaPart? part, float scale, float permeation, Vector4 color)
+    {
+        var corner = part is { IsNineGrid: true } ? Math.Max(part.Left, Math.Max(part.Top, Math.Max(part.Right, part.Bottom))) : 20;
+        if (corner <= 0)
+            corner = 20;
+        var inset = MathF.Max(4f, corner * 0.35f) * scale;
+        var min = new Vector2(rect.X + inset, rect.Y + inset);
+        var max = new Vector2(rect.X + rect.W - inset, rect.Y + rect.H - inset);
+        if (max.X - min.X < 2f || max.Y - min.Y < 2f)
+            return;
+
+        var nodeAlpha = part?.NodeAlpha ?? 127f / 255f;
+        var coverage = Math.Clamp(permeation, 0f, 1f) * nodeAlpha;
+        if (coverage <= 0.001f)
+            return;
+
+        var rounding = Math.Clamp(corner * scale - inset, 0f, Math.Min(max.X - min.X, max.Y - min.Y) * 0.5f);
+        var fill = new Vector4(color.X, color.Y, color.Z, coverage);
+        drawList.AddRectFilled(min, max, ImGui.GetColorU32(fill), rounding);
     }
 
     public static void DrawTabFace(VanillaRect rect, bool hovered)
