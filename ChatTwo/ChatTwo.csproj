@@ -2,9 +2,9 @@
     <PropertyGroup>
         <AssemblyName>ChatTwoVanilla</AssemblyName>
         <RootNamespace>ChatTwo</RootNamespace>
-        <Version>1.43.2</Version>
-        <AssemblyVersion>1.43.2.0</AssemblyVersion>
-        <FileVersion>1.43.2.0</FileVersion>
+        <Version>1.43.3</Version>
+        <AssemblyVersion>1.43.3.0</AssemblyVersion>
+        <FileVersion>1.43.3.0</FileVersion>
         <RepoUrl>https://github.com/Dillard-Coffey/ChatTwoVanilla</RepoUrl>
         <ImplicitUsings>enable</ImplicitUsings>
         <Authors>Infi, Anna</Authors>

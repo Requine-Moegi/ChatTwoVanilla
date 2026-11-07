@@ -21,6 +21,9 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.3**
+  - The channel tint fills the dark interior of the input box and stops at the visible rim. The rim is drawn on top of that edge.
+
   **1.43.2**
   - The channel tint fills only the center slice of the input frame. The border is drawn on top, so it no longer covers the rim.
 

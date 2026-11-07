@@ -1500,7 +1500,7 @@ Your old database can still be recovered, please contact the plugin author for h
         <value>Tint input box by chat channel</value>
     </data>
     <data name="Options_TintInputByChannel_Description" xml:space="preserve">
-        <value>Colors the center slice of the input frame with a darkened version of the selected channel's hue. The frame's border is drawn on top, so the rim stays its normal color. Say and other near-white channels keep the normal box. The chat log is not tinted. Colors set on the Colors tab still apply, and a /command tints the box as you type.</value>
+        <value>Colors the dark interior of the input box with a darkened version of the selected channel's hue. The fill stops at the inner edge of the visible rim, and the rim is drawn on top of that edge. Say and other near-white channels keep the normal box. The chat log is not tinted. Colors set on the Colors tab still apply, and a /command tints the box as you type.</value>
     </data>
     <data name="Options_TintInputIntensity_Name" xml:space="preserve">
         <value>Tint intensity</value>
