@@ -188,6 +188,9 @@ public sealed class Plugin : IDalamudPlugin
     [SuppressMessage("ReSharper", "ConditionalAccessQualifierIsNonNullableAccordingToAPIContract")]
     public void Dispose()
     {
+        if (Config != null)
+            SaveConfig();
+
         Interface.LanguageChanged -= LanguageChanged;
         Interface.UiBuilder.OpenMainUi -= OpenMainUi;
         Interface.UiBuilder.Draw -= Draw;

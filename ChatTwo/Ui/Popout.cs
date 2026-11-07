@@ -44,6 +44,13 @@ public class Popout : Window, IChatWindow
 
         Size = new Vector2(350, 350);
         SizeCondition = ImGuiCond.FirstUseEver;
+        if (Tab.HasPopOutBounds && Tab.PopOutW >= 8f && Tab.PopOutH >= 8f)
+        {
+            Size = new Vector2(Tab.PopOutW, Tab.PopOutH);
+            SizeCondition = ImGuiCond.Once;
+            Position = new Vector2(Tab.PopOutX, Tab.PopOutY);
+            PositionCondition = ImGuiCond.Once;
+        }
 
         IsOpen = true;
         RespectCloseHotkey = false;
@@ -144,6 +151,7 @@ public class Popout : Window, IChatWindow
 
         LastWindowSize = ImGui.GetWindowSize();
         LastWindowPos = ImGui.GetWindowPos();
+        RememberBounds();
 
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows))
             LastActivityTime = FrameTime;
@@ -304,6 +312,39 @@ public class Popout : Window, IChatWindow
 
         Tab.PopOut = false;
         Plugin.SaveConfig();
+    }
+
+    /// <summary>
+    /// Keep this tab's pop-out where the player left it. Dalamud does not keep imgui.ini
+    /// for these windows, so the position is stored on the tab and applied once on open.
+    /// </summary>
+    private void RememberBounds()
+    {
+        if (ImGui.IsWindowDocked())
+            return;
+
+        var scale = ImGuiHelpers.GlobalScale;
+        if (!float.IsFinite(scale) || scale < 0.05f)
+            scale = 1f;
+
+        var pos = ImGui.GetWindowPos();
+        var size = ImGui.GetWindowSize() / scale;
+        if (size.X < 8f || size.Y < 8f)
+            return;
+
+        if (Tab.HasPopOutBounds
+            && Math.Abs(Tab.PopOutX - pos.X) < 0.5f
+            && Math.Abs(Tab.PopOutY - pos.Y) < 0.5f
+            && Math.Abs(Tab.PopOutW - size.X) < 0.5f
+            && Math.Abs(Tab.PopOutH - size.Y) < 0.5f)
+            return;
+
+        Tab.HasPopOutBounds = true;
+        Tab.PopOutX = pos.X;
+        Tab.PopOutY = pos.Y;
+        Tab.PopOutW = size.X;
+        Tab.PopOutH = size.Y;
+        Plugin.DeferredSaveFrames = 30;
     }
 
     /// <summary>

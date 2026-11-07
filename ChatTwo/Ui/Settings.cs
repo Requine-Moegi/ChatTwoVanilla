@@ -90,12 +90,21 @@ public sealed class SettingsWindow : Window
     {
         foreach (var tab in Mutable.Tabs)
         {
-            if (!PopOutAtDraft.TryGetValue(tab.Identifier, out var atDraft) || tab.PopOut != atDraft)
+            var live = Plugin.Config.Tabs.Find(candidate => candidate.Identifier == tab.Identifier);
+            if (live == null)
                 continue;
 
-            var live = Plugin.Config.Tabs.Find(candidate => candidate.Identifier == tab.Identifier);
-            if (live != null)
+            if (PopOutAtDraft.TryGetValue(tab.Identifier, out var atDraft) && tab.PopOut == atDraft)
                 tab.PopOut = live.PopOut;
+
+            if (!live.HasPopOutBounds)
+                continue;
+
+            tab.HasPopOutBounds = true;
+            tab.PopOutX = live.PopOutX;
+            tab.PopOutY = live.PopOutY;
+            tab.PopOutW = live.PopOutW;
+            tab.PopOutH = live.PopOutH;
         }
     }
 

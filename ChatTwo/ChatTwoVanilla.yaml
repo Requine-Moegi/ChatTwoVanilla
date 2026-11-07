@@ -15,6 +15,9 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.14**
+  - Pop-outs remember their position and size
+
   **1.43.13**
   - Font size setting in Vanilla Style; text no longer scales with Dalamud
 

@@ -305,6 +305,16 @@ public class Tab
     public bool DisplayTimestamp = true;
     public InputChannel? Channel;
     public bool PopOut;
+
+    /// <summary>
+    /// Last free-floating position and size of this tab's pop-out.
+    /// Size is in the same unscaled units as Dalamud's <c>Window.Size</c>.
+    /// </summary>
+    public bool HasPopOutBounds;
+    public float PopOutX;
+    public float PopOutY;
+    public float PopOutW;
+    public float PopOutH;
     public bool IndependentOpacity;
     public float Opacity = 100f;
     public bool InputDisabled;
@@ -401,6 +411,11 @@ public class Tab
             DisplayTimestamp = DisplayTimestamp,
             Channel = Channel,
             PopOut = PopOut,
+            HasPopOutBounds = HasPopOutBounds,
+            PopOutX = PopOutX,
+            PopOutY = PopOutY,
+            PopOutW = PopOutW,
+            PopOutH = PopOutH,
             IndependentOpacity = IndependentOpacity,
             Opacity = Opacity,
             Identifier = Identifier,
