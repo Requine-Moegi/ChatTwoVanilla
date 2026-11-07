@@ -1488,67 +1488,64 @@ Your old database can still be recovered, please contact the plugin author for h
         <value>Vanilla style</value>
     </data>
     <data name="Options_VanillaStyle_Description" xml:space="preserve">
-        <value>Draw the chat log like the game's chat window: framed log, channel name, input field, and a bottom tab strip, using the game's textures, Axis font, channel colors, and log transparency. Every tab is shown on that strip, and extra tabs scroll. The sidebar, title bar, and icon-font buttons are hidden while this is on. Turn it off to use the original Chat 2 look. Channel colors set in the Colors tab still override the game. Dalamud style override is not applied while this is on.</value>
+        <value>Make the chat window look like the game's own chat log.</value>
     </data>
     <data name="Options_VanillaStyle_OverrideIgnored" xml:space="preserve">
-        <value>While vanilla style is on, the Dalamud style override is not applied to the chat log or its popouts.</value>
+        <value>This does not change the vanilla chat window.</value>
     </data>
     <data name="Options_VanillaStyle_SidebarIgnored" xml:space="preserve">
-        <value>While vanilla style is on, tabs stay on the bottom strip. The sidebar is not shown.</value>
+        <value>Tabs stay on the bottom of the window.</value>
     </data>
     <data name="Options_TintInputByChannel_Name" xml:space="preserve">
         <value>Tint input box by chat channel</value>
     </data>
     <data name="Options_TintInputByChannel_Description" xml:space="preserve">
-        <value>Recolors the dark pixels of the input box with a darkened version of the selected channel's hue. The light rim is left unchanged. Say and other near-white channels keep the normal box. The chat log is not tinted. Colors set on the Colors tab still apply, and a /command tints the box as you type.</value>
+        <value>Tint the input box with the color of the channel you're typing in.</value>
     </data>
     <data name="Options_TintInputIntensity_Name" xml:space="preserve">
         <value>Tint intensity</value>
     </data>
     <data name="Options_TintInputByChannel_VanillaOnly" xml:space="preserve">
-        <value>The input tint is drawn only while vanilla style is on.</value>
+        <value>Only applies while vanilla style is on.</value>
     </data>
     <data name="Options_VanillaStyleTab_Name" xml:space="preserve">
         <value>Vanilla Style</value>
     </data>
     <data name="Options_VanillaStyleTab_Intro" xml:space="preserve">
-        <value>These options change the vanilla chat window. Anything that also matters with vanilla style off is still on its original tab.</value>
+        <value>Settings for the vanilla-style chat window.</value>
     </data>
     <data name="Options_LogOpacity_UseGame_Name" xml:space="preserve">
         <value>Use game setting</value>
     </data>
     <data name="Options_LogOpacity_UseGame_Description" xml:space="preserve">
-        <value>Follow the game's Log Window Transparency for the vanilla log background. Uncheck to set an opacity here. The input box keeps the game's input transparency.</value>
+        <value>Use the game's chat log transparency.</value>
     </data>
     <data name="Options_LogOpacity_Name" xml:space="preserve">
         <value>Log background opacity</value>
     </data>
     <data name="Options_LogOpacity_Description" xml:space="preserve">
-        <value>0% is clear and 100% is the log texture at its designed translucency. This replaces the game's transparency for the log background. It is still multiplied by the texture's own alpha, so 100% matches the game log at full opacity.</value>
-    </data>
-    <data name="Options_LogOpacity_PopoutNote" xml:space="preserve">
-        <value>A popped-out tab with its own opacity uses that value instead of this one.</value>
+        <value>How see-through the chat background is.</value>
     </data>
     <data name="Options_Tabs_LogBackground_Name" xml:space="preserve">
         <value>Log background color</value>
     </data>
     <data name="Options_Tabs_LogBackground_Description" xml:space="preserve">
-        <value>Lay this color over this tab's vanilla chat log. The log texture is nearly black, so the color is drawn on top of it and still follows the log's transparency. Leave it off for the normal log. The color is saved with the tab and is used in the main window and in a pop-out.</value>
+        <value>Color this tab's chat background.</value>
     </data>
     <data name="Options_VanillaStyle_PerTabColor" xml:space="preserve">
-        <value>Each tab's log background color is on the Tabs tab. Off leaves that tab's log untinted.</value>
+        <value>Each tab's background color is set in the Tabs tab.</value>
     </data>
     <data name="Options_VanillaStyle_FontNote" xml:space="preserve">
-        <value>Vanilla style always draws with the game's Axis font at the game's log font size, including pop-outs. The Fonts tab applies only while vanilla style is off. If the font atlas is still building, text keeps the current font for that frame and switches to Axis once it is ready. /chat2vanillaDebugger shows the active font.</value>
+        <value>Uses the game's chat font and size.</value>
     </data>
     <data name="Options_VanillaStyle_ResizeNote" xml:space="preserve">
-        <value>In vanilla style, resizing uses the corner grip. These checkboxes are also on the Chat log tab, where they control the original window.</value>
+        <value>Drag the corner arrow to resize.</value>
     </data>
     <data name="Options_Tabs_ImportGame_Name" xml:space="preserve">
         <value>Import tabs from game chat</value>
     </data>
     <data name="Options_Tabs_ImportGame_Description" xml:space="preserve">
-        <value>Read the four tabs from the game's live chat log: each name, and which messages that tab shows. Nothing changes until you choose append or replace. Save settings to keep the result.</value>
+        <value>Copy your in-game chat tabs into the plugin.</value>
     </data>
     <data name="Options_Tabs_ImportGame_Prompt" xml:space="preserve">
         <value>These are the game's four chat tabs. Append adds them after the tabs in this draft. Replace removes the tabs in this draft, including any that are popped out, and puts these in their place.</value>

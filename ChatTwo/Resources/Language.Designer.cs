@@ -4242,12 +4242,6 @@ namespace ChatTwo.Resources {
             }
         }
 
-        internal static string Options_LogOpacity_PopoutNote {
-            get {
-                return ResourceManager.GetString("Options_LogOpacity_PopoutNote", resourceCulture);
-            }
-        }
-
         internal static string Options_Tabs_LogBackground_Name {
             get {
                 return ResourceManager.GetString("Options_Tabs_LogBackground_Name", resourceCulture);
