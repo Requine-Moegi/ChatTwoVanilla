@@ -7,7 +7,7 @@ A Chat 2 fork that looks like FFXIV's own chat window, while keeping unlimited t
 1. In game, open `/xlsettings` and go to **Experimental**.
 2. Add this custom plugin repository:
 
-   `https://raw.githubusercontent.com/Dillard-Coffey/ChatTwoVanilla/main/repo.json`
+   `https://raw.githubusercontent.com/Requine-Moegi/ChatTwoVanilla/main/repo.json`
 
 3. Install **Chat 2 Vanilla** from the plugin installer.
 
