@@ -1,17 +1,11 @@
 name: Chat 2 Vanilla
 author: Infi, Anna
-punchline: Chat 2, skinned like the vanilla chat log.
+punchline: Chat 2 that looks like the vanilla chat window.
 description: |-
-  Fork of Chat 2, modified 2026-11-03.
-  Original work by Anna (ascclemens) and Infi (Infiziert90), licensed under the EUPL-1.2.
-  Upstream: https://github.com/Infiziert90/ChatTwo
+  A Chat 2 fork that looks like the game's own chat window, with unlimited tabs.
+  Turn off Vanilla style for the normal Chat 2 look. Installs alongside Chat 2.
 
-  Chat 2 Vanilla keeps Chat 2's tabs, filters, input, autocomplete, links, and emotes.
-  A "Vanilla style" option draws the main chat window with the game's own UI textures,
-  Axis font, channel colors, and log transparency. Turn it off for the original Chat 2 look.
-
-  This plugin's internal name is ChatTwoVanilla, so it can be installed next to Chat 2.
-  Its IPC channels are ChatTwoVanilla.* and do not collide with ChatTwo.*.
+  Based on Chat 2 by Anna and Infi (EUPL-1.2): https://github.com/Infiziert90/ChatTwo
 repo_url: https://github.com/Dillard-Coffey/ChatTwoVanilla
 icon_url: https://raw.githubusercontent.com/Dillard-Coffey/ChatTwoVanilla/main/ChatTwo/images/icon.png
 accepts_feedback: true
@@ -22,60 +16,13 @@ tags:
   - Replacement
 changelog: |-
   **1.43.11**
-  - Pop-outs without an input box no longer leave a gap above the tab bar.
+  - Import your tabs from the game's chat settings
+  - Optional input box tint by chat channel
+  - Per-tab log background color and log transparency setting
+  - Toggle for the gold highlight on tabs with new messages
+  - Vanilla Style settings now have their own tab, with shorter descriptions
+  - Fixed pop-out resizing, saving, and text spilling past the log
+  - More reliable game font on all machines
 
-  **1.43.10**
-  - Pop-out text stays inside the solid part of the log background, clear of the faded border.
-
-  **1.43.9**
-  - The import confirmation is a normal window. The screen no longer dims behind it.
-  - Pop-out message text stays inside the log panel instead of drawing over the bottom bar.
-  - Vanilla style keeps the game's Axis font even when an older custom font is saved. A font that fails to build is tried again, and the font actually used is written to the Dalamud log.
-
-  **1.43.8**
-  - The import confirmation no longer dims the screen.
-
-  **1.43.7**
-  - The import confirmation stays fully opaque over the dimmed background, with shorter text.
-
-  **1.43.6**
-  - Import tabs from game chat reads LOGFLTR.DAT from the game's user folder, then falls back to Documents.
-
-  **1.43.5**
-  - Shorter descriptions on the Vanilla Style and Tabs settings.
-  - Highlight tabs with new messages, on by default. Turn it off and unread tab names stay the normal color.
-  - Import tabs from game chat reads the four LOGFLTR tab blocks. Each checkbox is one byte.
-
-  **1.43.4**
-  - The channel tint recolors the dark pixels of the input texture. The light rim is unchanged, and no extra fill is drawn.
-
-  **1.43.3**
-  - The channel tint fills the dark interior of the input box and stops at the visible rim. The rim is drawn on top of that edge.
-
-  **1.43.2**
-  - The channel tint fills only the center slice of the input frame. The border is drawn on top, so it no longer covers the rim.
-
-  **1.43.1**
-  - Channel tint colors the inside of the input box. The frame stays the normal color.
-  - A tab's log color is drawn over the dark log texture, so it shows, and it still follows the opacity setting.
-
-  **1.43.0**
-  - Optional channel tint on the vanilla input box, off by default
-  - Each tab can tint its vanilla log background, saved with the tab
-  - Log background opacity follows the game, or a 0–100% override
-  - Vanilla Style settings tab
-  - Vanilla mode keeps the game's Axis font at the log font size, including pop-outs
-  - Import the game's four chat tabs, by name and channel filter, after a confirmation
-
-  **1.42.1**
-  - Each chat window keeps its own position and size while the vanilla resize grip is dragged
-  - Saving settings keeps popped-out tabs popped out
-  - English settings text uses color, not colour
-
-  **Chat 2 Vanilla (fork, 2026-11-03)**
-  - Toggleable vanilla chat-log style drawn in ImGui from the game's ULD textures
-  - Renamed to ChatTwoVanilla so it can coexist with Chat 2 (separate commands and IPC)
-
-  **Inherited from Chat 2**
-  - Unlimited tabs, filters, emotes, autocomplete, links, and the web interface
-  - See the upstream changelog for earlier Chat 2 changes
+  **1.42.0**
+  - First release
