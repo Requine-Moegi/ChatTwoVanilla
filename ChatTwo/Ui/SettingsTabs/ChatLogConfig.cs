@@ -31,6 +31,8 @@ public sealed class ChatLogConfig : ISettingsTab
             {
                 ImGuiUtil.DragFloatVertical(Language.Options_TintInputIntensity_Name, ref Mutable.InputChannelTint, 1f, 0f, 100f, $"{Mutable.InputChannelTint:N0}%%", ImGuiSliderFlags.AlwaysClamp);
                 ImGui.Spacing();
+                ImGuiUtil.OptionCheckbox(ref Mutable.TintInputOnlyWhileTyping, Language.Options_TintInputOnlyWhileTyping_Name, Language.Options_TintInputOnlyWhileTyping_Description);
+                ImGui.Spacing();
             }
 
             if (!Mutable.VanillaStyle)

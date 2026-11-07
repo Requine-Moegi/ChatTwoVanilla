@@ -1511,6 +1511,12 @@ Your old database can still be recovered, please contact the plugin author for h
     <data name="Options_TintInputIntensity_Name" xml:space="preserve">
         <value>Tint intensity</value>
     </data>
+    <data name="Options_TintInputOnlyWhileTyping_Name" xml:space="preserve">
+        <value>Tint only while typing</value>
+    </data>
+    <data name="Options_TintInputOnlyWhileTyping_Description" xml:space="preserve">
+        <value>Show the channel tint only while the input box is focused.</value>
+    </data>
     <data name="Options_TintInputByChannel_VanillaOnly" xml:space="preserve">
         <value>Only applies while vanilla style is on.</value>
     </data>

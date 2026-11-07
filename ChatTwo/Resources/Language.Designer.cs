@@ -4224,6 +4224,18 @@ namespace ChatTwo.Resources {
             }
         }
 
+        internal static string Options_TintInputOnlyWhileTyping_Name {
+            get {
+                return ResourceManager.GetString("Options_TintInputOnlyWhileTyping_Name", resourceCulture);
+            }
+        }
+
+        internal static string Options_TintInputOnlyWhileTyping_Description {
+            get {
+                return ResourceManager.GetString("Options_TintInputOnlyWhileTyping_Description", resourceCulture);
+            }
+        }
+
         internal static string Options_TintInputByChannel_VanillaOnly {
             get {
                 return ResourceManager.GetString("Options_TintInputByChannel_VanillaOnly", resourceCulture);

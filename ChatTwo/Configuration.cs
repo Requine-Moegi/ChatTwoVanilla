@@ -147,6 +147,11 @@ public class Configuration : IPluginConfiguration
     public bool TintInputByChannel;
 
     /// <summary>
+    /// When tinting is on, color the input box only while it is focused. Off keeps the tint up the whole time.
+    /// </summary>
+    public bool TintInputOnlyWhileTyping;
+
+    /// <summary>
     /// 0–100. How far the input box moves from neutral toward the channel hue. The box stays dark.
     /// </summary>
     public float InputChannelTint = 45f;
@@ -250,6 +255,7 @@ public class Configuration : IPluginConfiguration
         HighlightUnreadTabs = other.HighlightUnreadTabs;
         VanillaFontSizePx = other.VanillaFontSizePx;
         TintInputByChannel = other.TintInputByChannel;
+        TintInputOnlyWhileTyping = other.TintInputOnlyWhileTyping;
         InputChannelTint = other.InputChannelTint;
         UseGameLogOpacity = other.UseGameLogOpacity;
         LogBackgroundOpacity = other.LogBackgroundOpacity;

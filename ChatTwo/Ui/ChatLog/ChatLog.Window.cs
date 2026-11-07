@@ -962,7 +962,16 @@ public partial class ChatLog : Window, IChatWindow
         // The input frame is behind the channel name. Node 4 is linked in front of component 1012.
         // The tint follows the channel the text will use, including a /command typed this frame.
         Vector4? inputTint = null;
-        if (Plugin.Config.TintInputByChannel)
+        var showTint = Plugin.Config.TintInputByChannel;
+        if (showTint && Plugin.Config.TintInputOnlyWhileTyping)
+        {
+            showTint = handler.InputFocused
+                || handler.Activate
+                || handler.FocusedPreview
+                || handler.AutoCompleteHandler.AutoCompleteInfo != null;
+        }
+
+        if (showTint)
         {
             var inputType = VanillaGameLook.ActiveInputChatType(tab, handler.ChatInput);
             inputTint = VanillaGameLook.InputBackgroundTint(inputType, Plugin.Config.InputChannelTint);

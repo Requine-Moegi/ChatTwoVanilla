@@ -15,6 +15,9 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.15**
+  - Option to tint the input box only while typing
+
   **1.43.14**
   - Pop-outs remember their position and size
 
