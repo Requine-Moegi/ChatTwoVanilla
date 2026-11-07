@@ -621,23 +621,35 @@ public partial class ChatLog : Window, IChatWindow
         CurrentHideState = HideState.User;
     }
 
-    public void DrawMessageLog(Tab tab, PayloadHandler handler, float childHeight, bool switchedTab, float childWidth = -1f)
+    public void DrawMessageLog(Tab tab, PayloadHandler handler, float childHeight, bool switchedTab, float childWidth = -1f, VanillaRect? clip = null)
     {
         var childFlags = ChatChrome.Enabled ? ImGuiWindowFlags.NoScrollbar : ImGuiWindowFlags.None;
         using var child = ImRaii.Child("##chat2-messages", new Vector2(childWidth, childHeight), false, childFlags);
         if (!child.Success)
             return;
 
-        // Push again inside the child. A child window does not always keep the parent's font,
-        // and a pop-out is a separate window, so the game Axis has to be pushed on this draw.
-        using var axis = ChatChrome.PushContentFont();
+        // A child window is composited after the parent, so a clip on the parent does not
+        // cover these glyphs. Intersect with the log panel while the text is submitted.
+        if (clip is { } clipRect)
+            ImGui.PushClipRect(clipRect.Min, clipRect.Max, true);
+        try
+        {
+            // Push again inside the child. A child window does not always keep the parent's font,
+            // and a pop-out is a separate window, so the game Axis has to be pushed on this draw.
+            using var axis = ChatChrome.PushContentFont();
 
-        if (tab.DisplayTimestamp && Plugin.Config.PrettierTimestamps)
-            DrawLogTableStyle(tab, handler, switchedTab);
-        else
-            DrawLogNormalStyle(tab, handler, switchedTab);
+            if (tab.DisplayTimestamp && Plugin.Config.PrettierTimestamps)
+                DrawLogTableStyle(tab, handler, switchedTab);
+            else
+                DrawLogNormalStyle(tab, handler, switchedTab);
 
-        ChatChrome.NoteScroll();
+            ChatChrome.NoteScroll();
+        }
+        finally
+        {
+            if (clip is not null)
+                ImGui.PopClipRect();
+        }
     }
 
     private void DrawLogNormalStyle(Tab tab, PayloadHandler handler, bool switchedTab)

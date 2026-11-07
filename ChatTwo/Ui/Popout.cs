@@ -206,12 +206,9 @@ public class Popout : Window, IChatWindow
         ChatChrome.BeginScrollDrag(frame.Scroll);
         ChatChrome.DrawLogBackground(frame, chromeAlpha, VanillaGameLook.TabLogBackgroundTint(Tab));
 
-        var messages = frame.Messages;
-        if (!Tab.SupportsInput)
-            messages = messages with { H = Math.Max(frame.Scale * 20f, frame.TabStrip.Y - 2f * frame.Scale - messages.Y) };
-
+        var messages = MessageListRect(frame);
         ImGui.SetCursorScreenPos(messages.Min);
-        Plugin.ChatLog.DrawMessageLog(Tab, InputHandler.PayloadHandler, messages.H, false, messages.W);
+        Plugin.ChatLog.DrawMessageLog(Tab, InputHandler.PayloadHandler, messages.H, false, messages.W, frame.Background);
         ChatChrome.PaintScrollbar(frame.Scroll);
 
         if (Tab.SupportsInput)
@@ -236,6 +233,25 @@ public class Popout : Window, IChatWindow
 
         if (Tab.CanResize)
             ChatChrome.DrawGrip(frame);
+    }
+
+    /// <summary>
+    /// The message child is drawn after the tab and input bars, so it must end at the log
+    /// panel. Extending it to the tab row paints glyphs over that chrome.
+    /// </summary>
+    private VanillaRect MessageListRect(VanillaFrame frame)
+    {
+        var messages = frame.Messages;
+        var panelBottom = frame.Background.Y + frame.Background.H;
+        var chromeTop = frame.TabStrip.Y;
+        if (Tab.SupportsInput)
+            chromeTop = Math.Min(chromeTop, frame.Input.Y);
+
+        var bottom = Math.Min(messages.Y + messages.H, Math.Min(panelBottom, chromeTop));
+        if (!Tab.SupportsInput)
+            bottom = Math.Min(panelBottom, chromeTop);
+
+        return messages with { H = Math.Max(frame.Scale * 20f, bottom - messages.Y) };
     }
 
     private void DrawVanillaPopoutStrip(VanillaFrame frame)
