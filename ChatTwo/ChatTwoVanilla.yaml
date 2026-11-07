@@ -21,6 +21,9 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.6**
+  - Import tabs from game chat reads LOGFLTR.DAT from the game's user folder, then falls back to Documents.
+
   **1.43.5**
   - Shorter descriptions on the Vanilla Style and Tabs settings.
   - Highlight tabs with new messages, on by default. Turn it off and unread tab names stay the normal color.

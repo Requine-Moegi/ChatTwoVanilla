@@ -1,4 +1,5 @@
 using ChatTwo.Code;
+using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 
 namespace ChatTwo.Game;
@@ -24,8 +25,8 @@ internal sealed class GameTabImport
 /// <summary>
 /// Reads the four vanilla chat tabs from the running client. Names come from
 /// <see cref="RaptureLogModule"/>. Which messages each tab shows come from the
-/// LOGFLTR layout: one byte per LogFilter row, inside LogFilterConfig when that
-/// image is present, otherwise from the character's LOGFLTR.DAT.
+/// LOGFLTR layout: one byte per LogFilter row. The character file is read first,
+/// from the game's user directory. The same layout is tried in memory only if the file is missing.
 /// </summary>
 internal static class GameChatTabImporter
 {
@@ -206,42 +207,50 @@ internal static class GameChatTabImporter
         error = "";
 
         var filter = LogFilterConfig.Instance();
-        if (filter != null)
-        {
-            var memory = new byte[sizeof(LogFilterConfig)];
-            new ReadOnlySpan<byte>(filter, memory.Length).CopyTo(memory);
-            if (LogFilterDat.TryFind(memory, out flags))
-            {
-                how = "LogFilterConfig, one byte per LogFilter row";
-                return true;
-            }
-
-            var written = filter->TempDataBytesWritten;
-            if (filter->TempDataPtr != 0 && written >= LogFilterDat.MinimumSize && written <= 1024 * 1024)
-            {
-                var temp = new byte[written];
-                new ReadOnlySpan<byte>((byte*)filter->TempDataPtr, temp.Length).CopyTo(temp);
-                if (LogFilterDat.TryFind(temp, out flags))
-                {
-                    how = "LogFilterConfig file buffer, one byte per LogFilter row";
-                    return true;
-                }
-            }
-        }
-
         var contentId = filter != null ? filter->CharacterContentId : 0;
         if (contentId == 0)
             contentId = Plugin.PlayerState.ContentId;
 
-        if (!TryReadLogFilterFile(contentId, out flags, out error))
-            return false;
+        var tried = new List<string>();
+        if (TryReadLogFilterFile(contentId, tried, out flags, out error))
+        {
+            how = "LOGFLTR.DAT, one byte per LogFilter row";
+            return true;
+        }
 
-        how = "LOGFLTR.DAT, one byte per LogFilter row";
-        error = "";
-        return true;
+        if (filter != null && TryReadFilterMemory(filter, out flags))
+        {
+            how = "LogFilterConfig, one byte per LogFilter row";
+            error = "";
+            return true;
+        }
+
+        if (string.IsNullOrEmpty(error))
+            error = "The log filters could not be read. Nothing was changed.";
+        return false;
     }
 
-    private static bool TryReadLogFilterFile(ulong contentId, out bool[][] flags, out string error)
+    private static unsafe bool TryReadFilterMemory(LogFilterConfig* filter, out bool[][] flags)
+    {
+        var memory = new byte[sizeof(LogFilterConfig)];
+        new ReadOnlySpan<byte>(filter, memory.Length).CopyTo(memory);
+        if (LogFilterDat.TryFind(memory, out flags))
+            return true;
+
+        var written = filter->TempDataBytesWritten;
+        if (filter->TempDataPtr != 0 && written >= LogFilterDat.MinimumSize && written <= 1024 * 1024)
+        {
+            var temp = new byte[written];
+            new ReadOnlySpan<byte>((byte*)filter->TempDataPtr, temp.Length).CopyTo(temp);
+            if (LogFilterDat.TryFind(temp, out flags))
+                return true;
+        }
+
+        flags = [];
+        return false;
+    }
+
+    private static bool TryReadLogFilterFile(ulong contentId, List<string> tried, out bool[][] flags, out string error)
     {
         flags = [];
         error = "";
@@ -251,19 +260,28 @@ internal static class GameChatTabImporter
             return false;
         }
 
-        var path = FindLogFilterPath(contentId);
-        if (path == null)
+        string? found = null;
+        foreach (var path in CandidatePaths(contentId))
         {
-            error = "The log filters could not be read from the game, and this character's LOGFLTR.DAT was not found. Nothing was changed.";
+            tried.Add(path);
+            var exists = File.Exists(path);
+            Plugin.Log.Information("Import tabs from game chat: tried {Path} ({Result})", path, exists ? "found" : "missing");
+            if (exists && found == null)
+                found = path;
+        }
+
+        if (found == null)
+        {
+            error = "The log filters could not be read. LOGFLTR.DAT was not found. Tried " + string.Join("; ", tried) + ". Nothing was changed.";
             return false;
         }
 
         try
         {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var stream = new FileStream(found, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             if (stream.Length < LogFilterDat.MinimumSize || stream.Length > 1024 * 1024)
             {
-                error = "LOGFLTR.DAT is not the expected log-filter file. Nothing was changed.";
+                error = $"LOGFLTR.DAT at {found} is not the expected log-filter file. Nothing was changed.";
                 return false;
             }
 
@@ -271,7 +289,7 @@ internal static class GameChatTabImporter
             stream.ReadExactly(data);
             if (!LogFilterDat.TryParse(data, out flags))
             {
-                error = "LOGFLTR.DAT does not match the 4-tab filter layout. Nothing was changed.";
+                error = $"LOGFLTR.DAT at {found} does not match the 4-tab filter layout. Nothing was changed.";
                 return false;
             }
 
@@ -279,38 +297,40 @@ internal static class GameChatTabImporter
         }
         catch (Exception ex)
         {
-            Plugin.Log.Warning(ex, "Could not read {Path}", path);
-            error = "LOGFLTR.DAT could not be read. Nothing was changed.";
+            Plugin.Log.Warning(ex, "Could not read {Path}", found);
+            error = $"LOGFLTR.DAT at {found} could not be read. Nothing was changed.";
             return false;
         }
     }
 
-    private static string? FindLogFilterPath(ulong contentId)
+    private static unsafe IEnumerable<string> CandidatePaths(ulong contentId)
     {
-        var root = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "My Games",
-            "FINAL FANTASY XIV - A Realm Reborn");
-        if (!Directory.Exists(root))
-            return null;
-
-        var exact = Path.Combine(root, "FFXIV_CHR" + contentId.ToString("X16"), "LOGFLTR.DAT");
-        if (File.Exists(exact))
-            return exact;
-
-        var bare = contentId.ToString("X");
-        foreach (var dir in Directory.EnumerateDirectories(root, "FFXIV_CHR*"))
+        var folder = "FFXIV_CHR" + contentId.ToString("X16");
+        string? gameFile = null;
+        var userPath = GameUserPath();
+        if (!string.IsNullOrWhiteSpace(userPath))
         {
-            var folder = Path.GetFileName(dir);
-            var id = folder.Length > "FFXIV_CHR".Length ? folder["FFXIV_CHR".Length..] : "";
-            if (!id.Equals(bare, StringComparison.OrdinalIgnoreCase) && !id.Equals(contentId.ToString("X16"), StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            var candidate = Path.Combine(dir, "LOGFLTR.DAT");
-            if (File.Exists(candidate))
-                return candidate;
+            gameFile = userPath.TrimEnd('\\', '/') + "\\" + folder + "\\LOGFLTR.DAT";
+            yield return gameFile;
         }
 
-        return null;
+        var documents = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "My Games",
+            "FINAL FANTASY XIV - A Realm Reborn",
+            folder,
+            "LOGFLTR.DAT");
+        if (!documents.Equals(gameFile, StringComparison.OrdinalIgnoreCase))
+            yield return documents;
+    }
+
+    private static unsafe string? GameUserPath()
+    {
+        var framework = Framework.Instance();
+        if (framework == null)
+            return null;
+
+        var path = framework->UserPathString;
+        return string.IsNullOrWhiteSpace(path) ? null : path;
     }
 }
