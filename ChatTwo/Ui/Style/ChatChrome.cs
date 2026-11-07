@@ -392,8 +392,8 @@ public static class ChatChrome
         return state;
     }
 
-    public static VanillaFrame Frame()
-        => VanillaFrame.From(ImGui.GetWindowPos(), ImGui.GetWindowSize(), ImGuiHelpers.GlobalScale);
+    public static VanillaFrame Frame(bool reserveInput = true)
+        => VanillaFrame.From(ImGui.GetWindowPos(), ImGui.GetWindowSize(), ImGuiHelpers.GlobalScale, reserveInput);
 
     public static bool DrawPart(VanillaPart? part, Vector2 min, Vector2 max, float alpha = 1f, Vector4? tint = null)
     {

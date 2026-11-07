@@ -21,6 +21,9 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.11**
+  - Pop-outs without an input box no longer leave a gap above the tab bar.
+
   **1.43.10**
   - Pop-out text stays inside the solid part of the log background, clear of the faded border.
 

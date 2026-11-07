@@ -202,7 +202,7 @@ public class Popout : Window, IChatWindow
 
     private void DrawVanillaPopout(float chromeAlpha, float inputAlpha)
     {
-        var frame = ChatChrome.Frame();
+        var frame = ChatChrome.Frame(Tab.SupportsInput);
         ChatChrome.BeginScrollDrag(frame.Scroll);
         ChatChrome.DrawLogBackground(frame, chromeAlpha, VanillaGameLook.TabLogBackgroundTint(Tab));
 

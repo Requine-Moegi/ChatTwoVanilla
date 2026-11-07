@@ -35,7 +35,7 @@ public readonly struct VanillaFrame
     private static VanillaRect R(float x, float y, float w, float h)
         => new(Snap(x), Snap(y), MathF.Max(1f, Snap(w)), MathF.Max(1f, Snap(h)));
 
-    public static VanillaFrame From(Vector2 origin, Vector2 size, float scale)
+    public static VanillaFrame From(Vector2 origin, Vector2 size, float scale, bool reserveInput = true)
     {
         float S(float design) => design * scale;
         var width = size.X;
@@ -43,7 +43,11 @@ public readonly struct VanillaFrame
         var button = S(28f);
         var step = S(24f);
 
-        var backgroundHeight = Math.Max(S(48f), height - S(52f));
+        // The panel ends 1 design pixel past the top of the chrome under it. That chrome
+        // is the input field (52px from the window bottom). A pop-out with no input uses
+        // the tab row instead, so the same 1px overlap sits above the tabs.
+        var chromeFromBottom = reserveInput ? 52f : 27f;
+        var backgroundHeight = Math.Max(S(48f), height - S(chromeFromBottom));
         var background = R(origin.X, origin.Y, width, backgroundHeight);
 
         var label = R(
