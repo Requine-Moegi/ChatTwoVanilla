@@ -1,3 +1,4 @@
+using System.Numerics;
 using ChatTwo.Game;
 using ChatTwo.Resources;
 using ChatTwo.Util;
@@ -37,8 +38,8 @@ internal static class GameChatTabImportUi
     }
 
     /// <summary>
-    /// Drawn from the settings window itself, after the scrolling child closes, so the modal
-    /// is not parented to that child and does not pick up its style alpha.
+    /// Drawn from the settings window itself. The modal dim color is fully transparent, so neither
+    /// this confirmation nor the rest of the screen is greyed out.
     /// </summary>
     public static void DrawModal(Configuration mutable)
     {
@@ -54,6 +55,7 @@ internal static class GameChatTabImportUi
         var popupBg = ImGui.GetStyle().Colors[(int)ImGuiCol.PopupBg];
         popupBg.W = 1f;
         using var popupColor = ImRaii.PushColor(ImGuiCol.PopupBg, popupBg);
+        using var noDim = ImRaii.PushColor(ImGuiCol.ModalWindowDimBg, new Vector4(0f, 0f, 0f, 0f));
         using var alpha = ImRaii.PushStyle(ImGuiStyleVar.Alpha, 1f);
         ImGui.SetNextWindowBgAlpha(1f);
 

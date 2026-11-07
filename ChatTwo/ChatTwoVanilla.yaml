@@ -21,6 +21,9 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.8**
+  - The import confirmation no longer dims the screen.
+
   **1.43.7**
   - The import confirmation stays fully opaque over the dimmed background, with shorter text.
 
