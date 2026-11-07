@@ -24,6 +24,7 @@ changelog: |-
   **1.43.9**
   - The import confirmation is a normal window. The screen no longer dims behind it.
   - Pop-out message text stays inside the log panel instead of drawing over the bottom bar.
+  - Vanilla style keeps the game's Axis font even when an older custom font is saved. A font that fails to build is tried again, and the font actually used is written to the Dalamud log.
 
   **1.43.8**
   - The import confirmation no longer dims the screen.

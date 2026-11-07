@@ -14,11 +14,22 @@ public class FontManager
     public IFontHandle AxisItalic = null!;
 
     private IFontHandle? _vanillaAxis;
-    private readonly Dictionary<int, IFontHandle> _fixedAxis = new();
     private IFontHandle? _vanillaAxisItalic;
     private float _vanillaAxisPt = -1f;
+    private float _vanillaItalicPt = -1f;
+    private long _vanillaAxisBuiltAt;
+    private long _vanillaItalicBuiltAt;
+    private readonly Dictionary<int, FixedAxis> _fixedAxis = new();
     private bool _loggedLogPush;
+    private string? _loggedLine;
     private VanillaFontReport _lastLogFont;
+
+    private sealed class FixedAxis
+    {
+        public required IFontHandle Handle;
+        public float Pt;
+        public long BuiltAt;
+    }
 
     /// <summary>
     /// What the last vanilla log-text push actually put on the ImGui font stack.
@@ -91,10 +102,16 @@ public class FontManager
                 }
             }
 
-            // Ingame supported ranges
-            var reader = new FdtReader(Plugin.DataManager.GetFile("common/font/axis_12.fdt")!.Data);
-            foreach (var c in reader.Glyphs)
-                builder.AddChar(c.Char);
+            // Ingame supported ranges. The file name in the client is uppercase.
+            // A missing file used to throw here and skip the rest of BuildFonts.
+            var fdt = Plugin.DataManager.GetFile("common/font/AXIS_12.fdt")
+                      ?? Plugin.DataManager.GetFile("common/font/axis_12.fdt");
+            if (fdt != null)
+            {
+                var reader = new FdtReader(fdt.Data);
+                foreach (var c in reader.Glyphs)
+                    builder.AddChar(c.Char);
+            }
 
             // various symbols
             // French
@@ -187,15 +204,39 @@ public class FontManager
         : Plugin.Config.FontsEnabled ? Plugin.Config.GlobalFontV2.SizePx : SizeInPx(Plugin.Config.FontSizeV2);
 
     /// <summary>
-    /// Axis at the game's chat-log size. Rebuilt only when that size changes.
-    /// The handle is created with an explicit pixel size. <see cref="IFontHandle.Push"/> is skipped
-    /// until the atlas has built the glyphs: pushing early puts a null font on the stack and the
-    /// user's Dalamud font stays. The next frame, once <see cref="IFontHandle.Available"/> is set, switches to Axis.
+    /// Axis at the game's chat-log size. The handle is created with an explicit pixel size and
+    /// pushed only after the atlas has built it. Until then the startup Axis face is used, never
+    /// the saved custom font. A handle that is still missing after a few seconds is built again.
     /// </summary>
     public IDisposable PushVanillaAxis()
     {
         EnsureVanillaAxis();
-        return PushIfReady(_vanillaAxis!, _vanillaAxisPt, recordLog: true, "game Axis");
+        if (_vanillaAxis!.Available)
+            return PushIfReady(_vanillaAxis, _vanillaAxisPt, recordLog: true, "game Axis");
+
+        // The saved Chat 2 font stays underneath this push. Do not reveal it while
+        // the log-sized face is still building or after its build failed.
+        if (Axis is { Available: true })
+            return PushIfReady(Axis, Plugin.Config.FontSizeV2, recordLog: true, "fallback Axis at the Fonts-tab size; log-size handle not ready");
+
+        Remember(_vanillaAxisPt, SizeInPx(_vanillaAxisPt), false, _vanillaAxis.LoadException?.Message, false, ImGui.GetFontSize(), ImGuiHelpers.GlobalScale, "fallback Dalamud default; no Axis handle is ready");
+        return NopDispose.Instance;
+    }
+
+    /// <summary>
+    /// The original Chat 2 face. Used only while vanilla style is off.
+    /// An unready handle is not pushed: Dalamud's Push still stacks a null font.
+    /// </summary>
+    public IDisposable PushConfiguredFont()
+    {
+        var handle = Plugin.Config.FontsEnabled ? RegularFont : Axis;
+        if (handle is not { Available: true })
+        {
+            Remember(0f, 0f, false, handle?.LoadException?.Message, false, ImGui.GetFontSize(), ImGuiHelpers.GlobalScale, "configured font not ready; Dalamud default");
+            return NopDispose.Instance;
+        }
+
+        return handle.Push();
     }
 
     /// <summary>
@@ -224,13 +265,25 @@ public class FontManager
     public IDisposable PushFixedAxis(float pt)
     {
         var key = (int)Math.Round(pt * 100f);
-        if (!_fixedAxis.TryGetValue(key, out var handle))
+        if (!_fixedAxis.TryGetValue(key, out var entry) || NeedsRebuild(entry.Handle, entry.Pt, pt, entry.BuiltAt))
         {
-            handle = NewAxis(SizeInPx(pt));
-            _fixedAxis[key] = handle;
+            if (entry != null)
+            {
+                if (entry.Handle.LoadException != null)
+                    Plugin.Log.Information($"Vanilla Axis {pt:0.##}pt failed ({entry.Handle.LoadException.Message}). Building it again.");
+                entry.Handle.Dispose();
+            }
+
+            entry = new FixedAxis
+            {
+                Handle = NewAxis(SizeInPx(pt)),
+                Pt = pt,
+                BuiltAt = Environment.TickCount64,
+            };
+            _fixedAxis[key] = entry;
         }
 
-        return PushIfReady(handle, pt, recordLog: false, "game Axis");
+        return PushIfReady(entry.Handle, pt, recordLog: false, "game Axis");
     }
 
     /// <summary>
@@ -251,8 +304,9 @@ public class FontManager
             report.AppendLine($"last log push: {_lastLogFont.Source}, drawn {_lastLogFont.DrawnPx:0.##} px, ready={_lastLogFont.Ready}, pushed={_lastLogFont.Pushed}");
         else
             report.AppendLine("last log push: the chat window has not drawn yet");
-        foreach (var (key, handle) in _fixedAxis.OrderBy(pair => pair.Key))
-            report.AppendLine($"fixed Axis {key / 100f:0.##} pt ready={handle.Available} error={handle.LoadException?.Message ?? "none"}");
+        report.AppendLine(Ui.Style.VanillaGameLook.DescribeLogFont());
+        foreach (var (key, entry) in _fixedAxis.OrderBy(pair => pair.Key))
+            report.AppendLine($"fixed Axis {key / 100f:0.##} pt ready={entry.Handle.Available} error={entry.Handle.LoadException?.Message ?? "none"}");
         return report.ToString().TrimEnd();
     }
 
@@ -268,17 +322,41 @@ public class FontManager
     private void EnsureVanillaAxis()
     {
         var pt = Ui.Style.VanillaGameLook.LogFontSizePt();
-        if (_vanillaAxis != null && _vanillaAxisItalic != null && Math.Abs(_vanillaAxisPt - pt) < 0.05f)
-            return;
-
-        _vanillaAxis?.Dispose();
-        _vanillaAxisItalic?.Dispose();
-        _vanillaAxisPt = pt;
-
         var px = SizeInPx(pt);
-        _vanillaAxis = NewAxis(px);
-        _vanillaAxisItalic = NewAxis(px, italicSkew: px / 6f);
-        _loggedLogPush = false;
+        if (NeedsRebuild(_vanillaAxis, _vanillaAxisPt, pt, _vanillaAxisBuiltAt))
+        {
+            if (_vanillaAxis?.LoadException != null)
+                Plugin.Log.Information($"Vanilla log Axis failed ({_vanillaAxis.LoadException.Message}). Building {pt:0.##}pt again.");
+            _vanillaAxis?.Dispose();
+            _vanillaAxis = NewAxis(px);
+            _vanillaAxisPt = pt;
+            _vanillaAxisBuiltAt = Environment.TickCount64;
+            _loggedLogPush = false;
+        }
+
+        if (NeedsRebuild(_vanillaAxisItalic, _vanillaItalicPt, pt, _vanillaItalicBuiltAt))
+        {
+            if (_vanillaAxisItalic?.LoadException != null)
+                Plugin.Log.Information($"Vanilla italic Axis failed ({_vanillaAxisItalic.LoadException.Message}). Building {pt:0.##}pt again.");
+            _vanillaAxisItalic?.Dispose();
+            _vanillaAxisItalic = NewAxis(px, italicSkew: px / 6f);
+            _vanillaItalicPt = pt;
+            _vanillaItalicBuiltAt = Environment.TickCount64;
+        }
+    }
+
+    /// <summary>
+    /// A handle that is still waiting on the atlas is left alone. One that is still
+    /// missing after a few seconds, or whose size changed, is built again.
+    /// Disposing it every frame is what kept the fallback font on screen.
+    /// </summary>
+    private static bool NeedsRebuild(IFontHandle? handle, float builtPt, float wantedPt, long builtAt)
+    {
+        if (handle == null || Math.Abs(builtPt - wantedPt) >= 0.05f)
+            return true;
+        if (handle.Available)
+            return false;
+        return Environment.TickCount64 - builtAt > 5000;
     }
 
     /// <summary>
@@ -317,12 +395,26 @@ public class FontManager
     {
         _loggedLogPush = true;
         _lastLogFont = new VanillaFontReport(pt, px, ready, error, pushed, drawn, scale, source);
+        var line = $"Vanilla font: {source}; requested {pt:0.##}pt ({px:0.##}px); drawn {drawn:0.##}px; globalScale {scale:0.##}; ready={ready}; pushed={pushed}; error={error ?? "none"}; fontsEnabled={Plugin.Config.FontsEnabled}; savedFont={Plugin.Config.GlobalFontV2}; language={Plugin.DataManager.Language}; {Ui.Style.VanillaGameLook.DescribeLogFont()}";
+        if (line == _loggedLine)
+            return;
+
+        _loggedLine = line;
+        Plugin.Log.Information(line);
     }
 
     private static unsafe bool FontMatches(IFontHandle handle)
     {
-        using var locked = handle.Lock();
-        return ImGui.GetFont().Handle == locked.ImFont.Handle;
+        try
+        {
+            using var locked = handle.Lock();
+            return ImGui.GetFont().Handle == locked.ImFont.Handle;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(ex, "Vanilla font push could not be compared");
+            return false;
+        }
     }
 
     private sealed class NopDispose : IDisposable

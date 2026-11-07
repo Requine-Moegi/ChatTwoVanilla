@@ -131,6 +131,25 @@ public static class VanillaGameLook
         return 14f;
     }
 
+    /// <summary>
+    /// The game keeps a font size per log panel. The chat window follows <c>LogFontSize</c>.
+    /// The other values are only here so a log can show when a panel disagrees with it.
+    /// </summary>
+    public static string DescribeLogFont()
+    {
+        static string One(string name, UiConfigOption option)
+        {
+            var raw = TryUint(option);
+            return raw == null ? $"{name}=unread" : $"{name}={raw.Value}";
+        }
+
+        return $"{One("LogFontSize", UiConfigOption.LogFontSize)} resolved={LogFontSizePt():0.##}pt " +
+               $"{One("LogFontSizeForm", UiConfigOption.LogFontSizeForm)} " +
+               $"{One("Log2", UiConfigOption.LogFontSizeLog2)} " +
+               $"{One("Log3", UiConfigOption.LogFontSizeLog3)} " +
+               $"{One("Log4", UiConfigOption.LogFontSizeLog4)}";
+    }
+
     public static IEnumerable<string> CandidatePaths(VanillaPart part, int theme, bool preferHd)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

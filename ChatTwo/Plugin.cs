@@ -242,7 +242,9 @@ public sealed class Plugin : IDalamudPlugin
         Interface.UiBuilder.DisableUserUiHide = !Config.HideWhenUiHidden;
         DefaultText = ImGui.GetStyle().Colors[(int)ImGuiCol.Text];
 
-        using ((Config.FontsEnabled ? FontManager.RegularFont : FontManager.Axis).Push())
+        // Vanilla style does not inherit the saved Chat 2 font. That face is only
+        // the fallback for the original look, and only once its handle is built.
+        using (Config.VanillaStyle ? FontManager.PushVanillaAxis() : FontManager.PushConfiguredFont())
             WindowSystem.Draw();
 
         ChatLog.FinalizeFrame();
