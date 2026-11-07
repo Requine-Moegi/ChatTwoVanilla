@@ -21,6 +21,9 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.9**
+  - The import confirmation is a normal window. The screen no longer dims behind it.
+
   **1.43.8**
   - The import confirmation no longer dims the screen.
 
