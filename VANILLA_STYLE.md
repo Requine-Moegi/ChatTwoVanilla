@@ -85,6 +85,7 @@ The exact `SomeName` values come from the ULD. Current clients commonly referenc
 Related behaviour while it is on:
 
 - Colours set on the Colours tab still override the game channel colour.
+- **Tint input box by chat channel** is off by default, on the Chat Log tab under Vanilla style. When it is on, only the input nine-grid is multiplied by a light color of the selected channel's hue. The log panel is not tinted. Say and other near-white or gray channels stay the normal dark box. The tint intensity slider defaults to 45. A temporary channel, including one typed as a `/command`, updates the box on that frame.
 - Log background alpha follows `UiConfigOption.LogPermeationRate`. The input bar follows `LogPermeationRateInput` when that value is present. Text stays opaque.
 - If the game config cannot be read, the background falls back to Chat 2's Window opacity slider. That slider is not applied on top of a successful game read.
 - Font size follows `UiConfigOption.LogFontSize`, in the same point unit as Chat 2's `FontSizeV2`. `GameFontStyle` is given `points * 4/3` pixels.
@@ -144,3 +145,4 @@ Build with the steps in the README, install `ChatTwoVanilla.dll` next to its jso
 13. Load original Chat 2 at the same time. Each plugin should have its own window, its own commands, its own config file, and its own IPC. Registering a context menu on `ChatTwo.Register` must not fire inside this fork, and `ChatTwoVanilla.Register` must not fire inside Chat 2.
 14. Pop out a tab with resizing allowed. Drag the main window's top-right grip, then the pop-out's. Each window keeps its own position and size; the other one must not jump.
 15. With that pop-out still open, open settings and click Save. The tab stays popped out, in the same window, and does not return to the main strip. Unchecking **Display in separate window** and saving docks that tab.
+16. **Tint input box by chat channel** starts off, and the input box is the normal dark frame. Turn it on. Party, shout, yell, and FC should tint that box only, and it should stay dark. Say, and any channel you set to white or gray on the Colors tab, should leave the box untinted. Type `/yell` or `/p` and the box should change before you send. The log background should not change. The intensity slider should strengthen and remove the tint. A popped-out tab follows its own channel.

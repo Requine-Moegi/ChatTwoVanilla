@@ -1496,6 +1496,18 @@ Your old database can still be recovered, please contact the plugin author for h
     <data name="Options_VanillaStyle_SidebarIgnored" xml:space="preserve">
         <value>While vanilla style is on, tabs stay on the bottom strip. The sidebar is not shown.</value>
     </data>
+    <data name="Options_TintInputByChannel_Name" xml:space="preserve">
+        <value>Tint input box by chat channel</value>
+    </data>
+    <data name="Options_TintInputByChannel_Description" xml:space="preserve">
+        <value>Shift the input box background toward the selected channel's color. Only the hue is used, so the box stays dark. Say and other near-white channels keep the normal box. The chat log is not tinted. Colors set on the Colors tab still apply, and a /command tints the box as you type.</value>
+    </data>
+    <data name="Options_TintInputIntensity_Name" xml:space="preserve">
+        <value>Tint intensity</value>
+    </data>
+    <data name="Options_TintInputByChannel_VanillaOnly" xml:space="preserve">
+        <value>The input tint is drawn only while vanilla style is on.</value>
+    </data>
     <data name="ChatLog_FocusInput" xml:space="preserve">
         <value>Focus chat input</value>
     </data>

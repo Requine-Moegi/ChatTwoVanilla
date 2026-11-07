@@ -21,6 +21,9 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.0**
+  - Optional channel tint on the vanilla input box, off by default
+
   **1.42.1**
   - Each chat window keeps its own position and size while the vanilla resize grip is dragged
   - Saving settings keeps popped-out tabs popped out

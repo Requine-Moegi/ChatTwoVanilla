@@ -3,7 +3,7 @@
     "Author": "Infi, Anna",
     "Name": "Chat 2 Vanilla",
     "InternalName": "ChatTwoVanilla",
-    "AssemblyVersion": "1.42.1.0",
+    "AssemblyVersion": "1.43.0.0",
     "Description": "Fork of Chat 2, modified 2026-11-03.\nOriginal work by Anna (ascclemens) and Infi (Infiziert90), licensed under the EUPL-1.2.\nUpstream: https://github.com/Infiziert90/ChatTwo\n\nChat 2 Vanilla keeps Chat 2's tabs, filters, input, autocomplete, links, and emotes.\nA \"Vanilla style\" option draws the main chat window with the game's own UI textures,\nAxis font, channel colors, and log transparency. Turn it off for the original Chat 2 look.\n\nThis plugin's internal name is ChatTwoVanilla, so it can be installed next to Chat 2.\nIts IPC channels are ChatTwoVanilla.* and do not collide with ChatTwo.*.",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Dillard-Coffey/ChatTwoVanilla",
@@ -20,13 +20,13 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Dillard-Coffey/ChatTwoVanilla/main/ChatTwo/images/icon.png",
     "Punchline": "Chat 2, skinned like the vanilla chat log.",
-    "Changelog": "**1.42.1**\n- Each chat window keeps its own position and size while the vanilla resize grip is dragged\n- Saving settings keeps popped-out tabs popped out\n- English settings text uses color, not colour\n\n**Chat 2 Vanilla (fork, 2026-11-03)**\n- Toggleable vanilla chat-log style drawn in ImGui from the game's ULD textures\n- Renamed to ChatTwoVanilla so it can coexist with Chat 2 (separate commands and IPC)\n\n**Inherited from Chat 2**\n- Unlimited tabs, filters, emotes, autocomplete, links, and the web interface\n- See the upstream changelog for earlier Chat 2 changes",
+    "Changelog": "**1.43.0**\n- Optional channel tint on the vanilla input box, off by default\n\n**1.42.1**\n- Each chat window keeps its own position and size while the vanilla resize grip is dragged\n- Saving settings keeps popped-out tabs popped out\n- English settings text uses color, not colour\n\n**Chat 2 Vanilla (fork, 2026-11-03)**\n- Toggleable vanilla chat-log style drawn in ImGui from the game's ULD textures\n- Renamed to ChatTwoVanilla so it can coexist with Chat 2 (separate commands and IPC)\n\n**Inherited from Chat 2**\n- Unlimited tabs, filters, emotes, autocomplete, links, and the web interface\n- See the upstream changelog for earlier Chat 2 changes",
     "AcceptsFeedback": true,
     "IsHide": false,
     "IsTestingExclusive": false,
     "DownloadLinkInstall": "https://github.com/Dillard-Coffey/ChatTwoVanilla/releases/latest/download/latest.zip",
     "DownloadLinkUpdate": "https://github.com/Dillard-Coffey/ChatTwoVanilla/releases/latest/download/latest.zip",
     "DownloadLinkTesting": "https://github.com/Dillard-Coffey/ChatTwoVanilla/releases/latest/download/latest.zip",
-    "LastUpdate": 1794065514
+    "LastUpdate": 1794065670
   }
 ]

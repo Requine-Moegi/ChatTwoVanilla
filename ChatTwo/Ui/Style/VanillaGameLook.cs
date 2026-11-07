@@ -133,6 +133,81 @@ public static class VanillaGameLook
         return ColourUtil.RgbaToVector4(type.DefaultColor());
     }
 
+    /// <summary>
+    /// The channel the input box should follow right now, including a temporary /command switch.
+    /// </summary>
+    public static ChatType ActiveInputChatType(Tab tab, string chatInput)
+    {
+        var type = tab.CurrentChannel.UseTempChannel
+            ? tab.CurrentChannel.TempChannel.ToChatType()
+            : tab.CurrentChannel.Channel.ToChatType();
+
+        if (!chatInput.Trim().StartsWith('/'))
+            return type;
+
+        var command = chatInput.Split(' ')[0];
+        if (Plugin.Instance.Commands.TextCommandChannels.TryGetValue(command, out var mapped))
+            return mapped;
+
+        return type;
+    }
+
+    /// <summary>
+    /// A near-white multiply color that carries the channel hue. Null leaves the input box untinted:
+    /// the setting is off, the intensity is zero, or the channel is white or gray (Say's default).
+    /// </summary>
+    public static Vector4? InputBackgroundTint(ChatType type, float intensityPercent)
+    {
+        var amount = Math.Clamp(intensityPercent / 100f, 0f, 1f);
+        if (amount <= 0.001f)
+            return null;
+
+        var color = ResolveChannelColor(type);
+        if (color == null)
+            return null;
+
+        var r = color.Value.X;
+        var g = color.Value.Y;
+        var b = color.Value.Z;
+        var max = MathF.Max(r, MathF.Max(g, b));
+        var min = MathF.Min(r, MathF.Min(g, b));
+        var delta = max - min;
+        // Say's default is (247, 247, 247). Gray system text is the same. Those stay untinted.
+        if (max <= 0.001f || delta / max < 0.12f)
+            return null;
+
+        float hue;
+        if (r >= g && r >= b)
+            hue = (g - b) / delta;
+        else if (g >= r && g >= b)
+            hue = (b - r) / delta + 2f;
+        else
+            hue = (r - g) / delta + 4f;
+        hue = ((hue % 6f) + 6f) % 6f / 6f;
+
+        // Value stays 1 so this only nudges a dark texture. Saturation is a fraction of the slider.
+        return new Vector4(HsvToRgb(hue, 0.55f * amount, 1f), 1f);
+    }
+
+    private static Vector3 HsvToRgb(float h, float s, float v)
+    {
+        var sector = h * 6f;
+        var i = (int)MathF.Floor(sector);
+        var f = sector - i;
+        var p = v * (1f - s);
+        var q = v * (1f - s * f);
+        var t = v * (1f - s * (1f - f));
+        return (i % 6) switch
+        {
+            0 => new Vector3(v, t, p),
+            1 => new Vector3(q, v, p),
+            2 => new Vector3(p, v, t),
+            3 => new Vector3(p, q, v),
+            4 => new Vector3(t, p, v),
+            _ => new Vector3(v, p, q),
+        };
+    }
+
     private static IEnumerable<string> RawCandidates(VanillaPart part, int theme)
     {
         var path = part.BasePath.Replace('\\', '/');

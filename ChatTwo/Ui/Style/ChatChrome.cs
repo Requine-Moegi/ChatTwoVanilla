@@ -420,15 +420,18 @@ public static class ChatChrome
             drawList.AddRectFilled(inner, innerMax, ImGui.GetColorU32(new Vector4(0f, 0f, 0f, alpha)));
     }
 
-    public static void DrawInputFrame(VanillaRect rect, float? permeation = null)
+    public static void DrawInputFrame(VanillaRect rect, float? permeation = null, Vector4? tint = null)
     {
         Catalog.EnsureLoaded();
         var drawList = ImGui.GetWindowDrawList();
-        if (Drawer.Draw(drawList, Catalog.InputBackground, rect.Min, rect.Max, permeation ?? VanillaGameLook.LogInputAlpha()))
+        if (Drawer.Draw(drawList, Catalog.InputBackground, rect.Min, rect.Max, permeation ?? VanillaGameLook.LogInputAlpha(), tint))
             return;
 
         var rounding = rect.H * 0.45f;
-        drawList.AddRectFilled(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.02f, 0.02f, 0.02f, 0.92f)), rounding);
+        var fill = new Vector4(0.02f, 0.02f, 0.02f, 0.92f);
+        if (tint != null)
+            fill = new Vector4(fill.X * tint.Value.X, fill.Y * tint.Value.Y, fill.Z * tint.Value.Z, fill.W);
+        drawList.AddRectFilled(rect.Min, rect.Max, ImGui.GetColorU32(fill), rounding);
         drawList.AddRect(rect.Min, rect.Max, ImGui.GetColorU32(new Vector4(0.75f, 0.75f, 0.72f, 0.9f)), rounding, ImDrawFlags.None, 1.25f);
     }
 

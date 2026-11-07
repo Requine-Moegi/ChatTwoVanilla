@@ -4182,6 +4182,30 @@ namespace ChatTwo.Resources {
             }
         }
 
+        internal static string Options_TintInputByChannel_Name {
+            get {
+                return ResourceManager.GetString("Options_TintInputByChannel_Name", resourceCulture);
+            }
+        }
+
+        internal static string Options_TintInputByChannel_Description {
+            get {
+                return ResourceManager.GetString("Options_TintInputByChannel_Description", resourceCulture);
+            }
+        }
+
+        internal static string Options_TintInputIntensity_Name {
+            get {
+                return ResourceManager.GetString("Options_TintInputIntensity_Name", resourceCulture);
+            }
+        }
+
+        internal static string Options_TintInputByChannel_VanillaOnly {
+            get {
+                return ResourceManager.GetString("Options_TintInputByChannel_VanillaOnly", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to Focus chat input.
         /// </summary>

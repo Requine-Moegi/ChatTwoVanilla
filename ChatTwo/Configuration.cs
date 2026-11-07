@@ -129,6 +129,17 @@ public class Configuration : IPluginConfiguration
     /// </summary>
     public bool VanillaStyle = true;
 
+    /// <summary>
+    /// When vanilla style is on, shift the input box background toward the selected channel's hue.
+    /// Near-white channels such as Say stay the normal dark box. The chat log is not tinted.
+    /// </summary>
+    public bool TintInputByChannel;
+
+    /// <summary>
+    /// 0–100. How far the input box moves from neutral toward the channel hue. The box stays dark.
+    /// </summary>
+    public float InputChannelTint = 45f;
+
     public ConfigKeyBind? ChatTabForward;
     public ConfigKeyBind? ChatTabBackward;
 
@@ -211,6 +222,8 @@ public class Configuration : IPluginConfiguration
         OverrideStyle = other.OverrideStyle;
         ChosenStyle = other.ChosenStyle;
         VanillaStyle = other.VanillaStyle;
+        TintInputByChannel = other.TintInputByChannel;
+        InputChannelTint = other.InputChannelTint;
         ChatTabForward = other.ChatTabForward;
         ChatTabBackward = other.ChatTabBackward;
         WebinterfaceEnabled = other.WebinterfaceEnabled;

@@ -937,7 +937,15 @@ public partial class ChatLog : Window, IChatWindow
     {
         ChatChrome.Uld.EnsureLoaded();
         // The input frame is behind the channel name. Node 4 is linked in front of component 1012.
-        ChatChrome.DrawInputFrame(frame.Input, inputAlpha);
+        // The tint follows the channel the text will use, including a /command typed this frame.
+        Vector4? inputTint = null;
+        if (Plugin.Config.TintInputByChannel)
+        {
+            var inputType = VanillaGameLook.ActiveInputChatType(tab, handler.ChatInput);
+            inputTint = VanillaGameLook.InputBackgroundTint(inputType, Plugin.Config.InputChannelTint);
+        }
+
+        ChatChrome.DrawInputFrame(frame.Input, inputAlpha, inputTint);
         using (Plugin.FontManager.PushFixedAxis(14f))
         using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, Vector2.Zero))
         {
