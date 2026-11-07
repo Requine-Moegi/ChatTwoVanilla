@@ -287,13 +287,15 @@ public class FontManager
     }
 
     /// <summary>
-    /// Axis at a fixed point size. The chat-log ULD uses 14 for the channel name and 12 for tab text,
-    /// independent of the log font size. Until the handle is ready, the caller keeps the font already pushed.
+    /// Axis for tab labels (12pt) and the channel name (14pt). Those point sizes match the
+    /// default 16px chat font at Dalamud scale 1, and they grow with the Font size setting
+    /// so the labels stay that size next to the chat text at any global scale.
     /// </summary>
     public IDisposable PushFixedAxis(float pt)
     {
         var key = (int)Math.Round(pt * 100f);
-        var px = HandlePixels(SizeInPx(pt));
+        var screen = VanillaFontScreenPx() * SizeInPx(pt) / 16f;
+        var px = HandlePixels(screen);
         if (!_fixedAxis.TryGetValue(key, out var entry) || NeedsRebuild(entry.Handle, entry.BuiltPx, px, entry.BuiltAt))
         {
             if (entry != null)
@@ -313,7 +315,7 @@ public class FontManager
             _fixedAxis[key] = entry;
         }
 
-        return PushIfReady(entry.Handle, SizeInPx(pt), entry.BuiltPx, recordLog: false, "game Axis");
+        return PushIfReady(entry.Handle, screen, entry.BuiltPx, recordLog: false, "game Axis");
     }
 
     /// <summary>

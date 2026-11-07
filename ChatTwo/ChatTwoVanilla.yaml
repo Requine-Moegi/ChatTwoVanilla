@@ -15,6 +15,9 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.17**
+  - Tab and channel labels follow the Font size setting
+
   **1.43.16**
   - Wrapped chat lines no longer gain extra space when Dalamud's scale is above 1
 
