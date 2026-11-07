@@ -60,7 +60,7 @@ public sealed class VanillaStyleTab : ISettingsTab
         ImGui.Spacing();
         ImGuiUtil.HelpText(Language.Options_VanillaStyle_PerTabColor);
         ImGui.Spacing();
-        GameChatTabImportUi.Draw(Mutable);
+        GameChatTabImportUi.Draw();
         ImGui.Spacing();
         ImGuiUtil.HelpText(Language.Options_VanillaStyle_FontNote);
         ImGui.Spacing();

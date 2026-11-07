@@ -17,8 +17,9 @@ internal static class GameChatTabImportUi
     private static GameTabImport? Pending;
     private static string? Error;
     private static string? Applied;
+    private static bool OpenRequested;
 
-    public static void Draw(Configuration mutable)
+    public static void Draw()
     {
         if (ImGui.Button(Language.Options_Tabs_ImportGame_Name))
             BeginRead();
@@ -33,6 +34,28 @@ internal static class GameChatTabImportUi
 
         if (!string.IsNullOrEmpty(Applied))
             ImGui.TextWrapped(Applied);
+    }
+
+    /// <summary>
+    /// Drawn from the settings window itself, after the scrolling child closes, so the modal
+    /// is not parented to that child and does not pick up its style alpha.
+    /// </summary>
+    public static void DrawModal(Configuration mutable)
+    {
+        if (OpenRequested)
+        {
+            ImGui.OpenPopup(PopupId);
+            OpenRequested = false;
+        }
+
+        if (!ImGui.IsPopupOpen(PopupId))
+            return;
+
+        var popupBg = ImGui.GetStyle().Colors[(int)ImGuiCol.PopupBg];
+        popupBg.W = 1f;
+        using var popupColor = ImRaii.PushColor(ImGuiCol.PopupBg, popupBg);
+        using var alpha = ImRaii.PushStyle(ImGuiStyleVar.Alpha, 1f);
+        ImGui.SetNextWindowBgAlpha(1f);
 
         var open = true;
         if (!ImGui.BeginPopupModal(PopupId, ref open, ImGuiWindowFlags.AlwaysAutoResize))
@@ -55,15 +78,9 @@ internal static class GameChatTabImportUi
         foreach (var tab in pending.Tabs)
             ImGui.BulletText($"{tab.Name} — {tab.Channels.Count} channels");
 
-        if (pending.Notes.Count > 0)
-        {
-            ImGui.Spacing();
-            foreach (var note in pending.Notes)
-                ImGui.TextWrapped(note);
-        }
-
         ImGui.Spacing();
-        ImGuiUtil.HelpText(pending.How);
+        ImGui.TextWrapped(Language.Options_Tabs_ImportGame_Actions);
+        ImGui.Spacing();
 
         if (ImGui.Button(Language.Options_Tabs_ImportGame_Append))
         {
@@ -107,6 +124,6 @@ internal static class GameChatTabImportUi
         }
 
         Pending = import;
-        ImGui.OpenPopup(PopupId);
+        OpenRequested = true;
     }
 }

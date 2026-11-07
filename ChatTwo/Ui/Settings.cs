@@ -172,6 +172,8 @@ public sealed class SettingsWindow : Window
                 Dalamud.Utility.Util.OpenLink("https://ko-fi.com/lojewalo");
         }
 
+        GameChatTabImportUi.DrawModal(Mutable);
+
         if (!save)
             return;
 

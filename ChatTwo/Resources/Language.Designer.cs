@@ -4302,6 +4302,12 @@ namespace ChatTwo.Resources {
             }
         }
 
+        internal static string Options_Tabs_ImportGame_Actions {
+            get {
+                return ResourceManager.GetString("Options_Tabs_ImportGame_Actions", resourceCulture);
+            }
+        }
+
         internal static string Options_Tabs_ImportGame_Append {
             get {
                 return ResourceManager.GetString("Options_Tabs_ImportGame_Append", resourceCulture);

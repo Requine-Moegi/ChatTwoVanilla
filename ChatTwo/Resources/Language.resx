@@ -1554,7 +1554,10 @@ Your old database can still be recovered, please contact the plugin author for h
         <value>Copy your in-game chat tabs into the plugin.</value>
     </data>
     <data name="Options_Tabs_ImportGame_Prompt" xml:space="preserve">
-        <value>These are the game's four chat tabs. Append adds them after the tabs in this draft. Replace removes the tabs in this draft, including any that are popped out, and puts these in their place.</value>
+        <value>Import your four in-game chat tabs.</value>
+    </data>
+    <data name="Options_Tabs_ImportGame_Actions" xml:space="preserve">
+        <value>Append adds them after your current tabs. Replace swaps your current tabs for these.</value>
     </data>
     <data name="Options_Tabs_ImportGame_Append" xml:space="preserve">
         <value>Append</value>
