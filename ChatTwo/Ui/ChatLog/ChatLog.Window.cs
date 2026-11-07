@@ -53,6 +53,13 @@ public partial class ChatLog : Window, IChatWindow
     private int _vanillaTabFirst;
     private float _vanillaTabBudget = -1f;
 
+    // Per tab: last content height, whether the reader is parked on the bottom,
+    // and a one-frame correction after a new line (SetScrollHere's target can
+    // land short of the max that is only known on the next frame).
+    private readonly Dictionary<Guid, float> _logContentY = new();
+    private readonly Dictionary<Guid, bool> _logFollowBottom = new();
+    private readonly Dictionary<Guid, bool> _logStickPending = new();
+
     public ChatLog(Plugin plugin) : base($"{Plugin.PluginName}###chat2vanilla")
     {
         Plugin = plugin;
@@ -657,9 +664,7 @@ public partial class ChatLog : Window, IChatWindow
         using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, Vector2.Zero))
             DrawMessages(tab, handler, false);
 
-        if (switchedTab || ImGui.GetScrollY() >= ImGui.GetScrollMaxY())
-            ImGui.SetScrollHereY(1f);
-
+        StickToBottom(tab, switchedTab);
         handler.Draw();
     }
 
@@ -690,14 +695,57 @@ public partial class ChatLog : Window, IChatWindow
             using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, oldItemSpacing))
             using (ImRaii.PushStyle(ImGuiStyleVar.CellPadding, oldCellPadding))
             {
-                // Custom styles can have cellPadding that go above 4, which GetScrollY isn't respecting
-                var cellPaddingOffset = !compact && oldCellPadding.Y > 4f ? oldCellPadding.Y - 4f : 0f;
-                if (switchedTab || ImGui.GetScrollY() + cellPaddingOffset >= ImGui.GetScrollMaxY())
-                    ImGui.SetScrollHereY(1f);
-
+                StickToBottom(tab, switchedTab);
                 handler.Draw();
             }
         }
+    }
+
+    /// <summary>
+    /// Keep a log that is already at the bottom pinned there when a line arrives.
+    /// SetScrollHereY every frame rounded onto a different pixel and the view shook.
+    /// Scroll only when the content actually grew, then once more to the real max
+    /// on the following frame (that max is not known until the new line has been submitted).
+    /// </summary>
+    private void StickToBottom(Tab tab, bool switchedTab)
+    {
+        var id = tab.Identifier;
+        var maxY = ImGui.GetScrollMaxY();
+        var y = ImGui.GetScrollY();
+        var contentY = ImGui.GetCursorPosY();
+        _logContentY.TryGetValue(id, out var previousY);
+        _logContentY[id] = contentY;
+        _logFollowBottom.TryGetValue(id, out var follow);
+        if (!_logFollowBottom.ContainsKey(id))
+            follow = true;
+        _logStickPending.TryGetValue(id, out var pending);
+
+        var grew = contentY > previousY + 0.5f;
+        var scrollingUp = ImGui.IsWindowHovered() && ImGui.GetIO().MouseWheel > 0f;
+        if (scrollingUp)
+            follow = false;
+        else if (!switchedTab && !grew && maxY > 1f && y < maxY - 4f)
+            follow = false;
+        else if (switchedTab || maxY <= 1f || y >= maxY - 2f)
+            follow = true;
+
+        if (switchedTab || (follow && grew))
+        {
+            ImGui.SetScrollHereY(1f);
+            pending = true;
+        }
+        else if (pending && follow && maxY > 1f)
+        {
+            ImGui.SetScrollY(maxY);
+            pending = false;
+        }
+        else
+        {
+            pending = false;
+        }
+
+        _logFollowBottom[id] = follow;
+        _logStickPending[id] = pending;
     }
 
     private void DrawMessages(Tab tab, PayloadHandler handler, bool isTable, bool moreCompact = false, float oldCellPaddingY = 0)
@@ -785,29 +833,27 @@ public partial class ChatLog : Window, IChatWindow
                 }
                 lastPosY = ImGui.GetCursorPosY();
 
-                // message has rendered once
-                // message isn't visible, so render dummy
+                // A row that sits fully outside the viewport keeps the height it was
+                // drawn at. Testing that with a dummy and then rewinding left the
+                // dummy's extent in the content size for one frame, so the next
+                // frame shrank and the stuck-to-bottom view jumped.
                 message.Height.TryGetValue(tab.Identifier, out var height);
-                message.IsVisible.TryGetValue(tab.Identifier, out var visible);
-                if (height != null && !visible)
+                if (height is float known && known > 0f)
                 {
-                    var beforeDummy = ImGui.GetCursorPos();
+                    var top = ImGui.GetCursorPosY();
+                    var bandTop = ImGui.GetScrollY();
+                    var bandBottom = bandTop + ImGui.GetWindowHeight();
+                    const float margin = 8f;
+                    var onScreen = top + known >= bandTop - margin && top <= bandBottom + margin;
+                    if (!onScreen)
+                    {
+                        if (isTable)
+                            ImGui.TableNextColumn();
 
-                    // skip to the message column for vis test
-                    if (isTable)
-                        ImGui.TableNextColumn();
-
-                    ImGui.Dummy(new Vector2(10f, height.Value));
-
-                    var nowVisible = ImGui.IsItemVisible();
-                    if (!nowVisible)
+                        ImGui.Dummy(new Vector2(10f, known));
+                        message.IsVisible[tab.Identifier] = false;
                         continue;
-
-                    if (isTable)
-                        ImGui.TableSetColumnIndex(0);
-
-                    ImGui.SetCursorPos(beforeDummy);
-                    message.IsVisible[tab.Identifier] = nowVisible;
+                    }
                 }
 
                 if (tab.DisplayTimestamp)

@@ -404,6 +404,9 @@ public static class ChatTypeExt
         ChatType.System => UiConfigOption.ColorSysMsg,
         ChatType.NpcDialogue => UiConfigOption.ColorNpcSay,
         ChatType.LootRoll => UiConfigOption.ColorLoot,
+        // "You obtain …" is a loot notice. It has no color payload of its own;
+        // the log paints it with this swatch. Leaving it unmapped read ColorSay.
+        ChatType.LootNotice => UiConfigOption.ColorItemNotice,
         ChatType.FreeCompanyAnnouncement => UiConfigOption.ColorFCAnnounce,
         ChatType.PvpTeamAnnouncement => UiConfigOption.ColorPvPGroupAnnounce,
         ChatType.PvpTeam => UiConfigOption.ColorPvPGroup,

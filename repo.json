@@ -3,7 +3,7 @@
     "Author": "Infi, Anna",
     "Name": "Chat 2 Vanilla",
     "InternalName": "ChatTwoVanilla",
-    "AssemblyVersion": "1.43.17.0",
+    "AssemblyVersion": "1.43.18.0",
     "Description": "A Chat 2 fork that looks like the game's own chat window, with unlimited tabs.\nTurn off Vanilla style for the normal Chat 2 look. Installs alongside Chat 2.\n\nBased on Chat 2 by Anna and Infi (EUPL-1.2): https://github.com/Infiziert90/ChatTwo",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Requine-Moegi/ChatTwoVanilla",
@@ -20,13 +20,13 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Requine-Moegi/ChatTwoVanilla/main/ChatTwo/images/icon.png",
     "Punchline": "Chat 2 that looks like the vanilla chat window.",
-    "Changelog": "**1.43.17**\n- Tab and channel labels follow the Font size setting\n\n**1.43.16**\n- Wrapped chat lines no longer gain extra space when Dalamud's scale is above 1\n\n**1.43.15**\n- Option to tint the input box only while typing\n\n**1.43.14**\n- Pop-outs remember their position and size\n\n**1.43.13**\n- Font size setting in Vanilla Style; text no longer scales with Dalamud\n\n**1.43.12**\n- Chat text size now matches the game when Dalamud's scale differs\n\n**1.43.11**\n- Import your tabs from the game's chat settings\n- Optional input box tint by chat channel\n- Per-tab log background color and log transparency setting\n- Toggle for the gold highlight on tabs with new messages\n- Vanilla Style settings now have their own tab, with shorter descriptions\n- Fixed pop-out resizing, saving, and text spilling past the log\n- More reliable game font on all machines\n\n**1.42.0**\n- First release",
+    "Changelog": "**1.43.18**\n- Pop-out logs stay put when new lines arrive\n- \"You obtain\" lines use the game's loot color\n\n**1.43.17**\n- Tab and channel labels follow the Font size setting\n\n**1.43.16**\n- Wrapped chat lines no longer gain extra space when Dalamud's scale is above 1\n\n**1.43.15**\n- Option to tint the input box only while typing\n\n**1.43.14**\n- Pop-outs remember their position and size\n\n**1.43.13**\n- Font size setting in Vanilla Style; text no longer scales with Dalamud\n\n**1.43.12**\n- Chat text size now matches the game when Dalamud's scale differs\n\n**1.43.11**\n- Import your tabs from the game's chat settings\n- Optional input box tint by chat channel\n- Per-tab log background color and log transparency setting\n- Toggle for the gold highlight on tabs with new messages\n- Vanilla Style settings now have their own tab, with shorter descriptions\n- Fixed pop-out resizing, saving, and text spilling past the log\n- More reliable game font on all machines\n\n**1.42.0**\n- First release",
     "AcceptsFeedback": true,
-    "DownloadLinkInstall": "https://github.com/Requine-Moegi/ChatTwoVanilla/releases/download/1.43.17/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/Requine-Moegi/ChatTwoVanilla/releases/download/1.43.17/latest.zip",
-    "DownloadLinkTesting": "https://github.com/Requine-Moegi/ChatTwoVanilla/releases/download/1.43.17/latest.zip",
+    "DownloadLinkInstall": "https://github.com/Requine-Moegi/ChatTwoVanilla/releases/download/1.43.18/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/Requine-Moegi/ChatTwoVanilla/releases/download/1.43.18/latest.zip",
+    "DownloadLinkTesting": "https://github.com/Requine-Moegi/ChatTwoVanilla/releases/download/1.43.18/latest.zip",
     "IsHide": false,
     "IsTestingExclusive": false,
-    "LastUpdate": 1794092792
+    "LastUpdate": 1794093818
   }
 ]
