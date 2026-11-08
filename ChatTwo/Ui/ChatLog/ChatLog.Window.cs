@@ -53,13 +53,21 @@ public partial class ChatLog : Window, IChatWindow
     private int _vanillaTabFirst;
     private float _vanillaTabBudget = -1f;
 
-    // Per tab: last content height, whether the reader is parked on the bottom,
-    // and a one-frame correction after a new line or a new child (the scroll
-    // max is only known on the frame after the lines are submitted).
+    // Per tab: last content height, whether the reader was parked on the bottom
+    // the last time that tab was visible, and a saved offset for when they
+    // were not. The child is shared by the tab bar, so coming back must not
+    // trust the scroll the previous tab left behind.
     private readonly Dictionary<Guid, float> _logContentY = new();
     private readonly Dictionary<Guid, bool> _logFollowBottom = new();
     private readonly Dictionary<Guid, bool> _logStickPending = new();
-    private readonly Dictionary<Guid, uint> _logWindow = new();
+    private readonly Dictionary<Guid, float> _logScrollY = new();
+    private readonly Dictionary<Guid, int> _logPinLeft = new();
+    private readonly Dictionary<Guid, int> _logRestoreLeft = new();
+    private readonly Dictionary<Guid, float> _logMaxY = new();
+    private readonly Dictionary<uint, Guid> _logShownInWindow = new();
+    private readonly Dictionary<uint, int> _logWindowFrame = new();
+    private double _stickFrameTime = -1;
+    private int _stickFrame;
 
     public ChatLog(Plugin plugin) : base($"{Plugin.PluginName}###chat2vanilla")
     {
@@ -705,13 +713,29 @@ public partial class ChatLog : Window, IChatWindow
     }
 
     /// <summary>
-    /// Keep a log pinned to the bottom, including the first frame it is drawn.
-    /// A new child (plugin load, pop-out, tab switch) starts at scroll 0, and
-    /// this frame's scroll max still describes the previous contents, so the
-    /// reader looks like they are at the top. That is not them leaving.
-    /// SetScrollHereY is not used: ImGui rounds that target, then clamps to a
-    /// max that was truncated. At Dalamud scale 1.5 those disagree and the
-    /// view shakes. Ceiling the max lets the clamp sit on the exact bottom.
+    /// One id for the whole frame. Main window and pop-outs draw the same log
+    /// helper in one frame, and <see cref="ImGui.GetTime"/> does not move between them.
+    /// </summary>
+    private int CurrentFrame()
+    {
+        var time = ImGui.GetTime();
+        if (time != _stickFrameTime)
+        {
+            _stickFrameTime = time;
+            _stickFrame++;
+        }
+
+        return _stickFrame;
+    }
+
+    /// <summary>
+    /// Keep a log pinned to the bottom when that is where the reader left it.
+    /// The tab bar draws every tab through one child, and a vanilla tab click
+    /// lands after the log has already drawn, so the next frame is not marked
+    /// as a switch. The scroll max on the first frames after the child shows
+    /// a tab again is still 0 or the previous tab. Pin across those frames.
+    /// SetScrollHereY is not used: at Dalamud scale 1.5 its rounded target and
+    /// the truncated max disagree, and the view shakes.
     /// </summary>
     private void StickToBottom(Tab tab, bool switchedTab)
     {
@@ -722,36 +746,78 @@ public partial class ChatLog : Window, IChatWindow
         var seen = _logContentY.ContainsKey(id);
         _logContentY.TryGetValue(id, out var previousY);
         _logContentY[id] = contentY;
-        _logFollowBottom.TryGetValue(id, out var follow);
-        _logStickPending.TryGetValue(id, out var pending);
 
-        // Main window and pop-out are different children that share a tab id.
-        // A new child starts at the top even when this tab was already followed.
+        // Missing entry means this tab has never been shown: open at the bottom.
+        var follow = !_logFollowBottom.TryGetValue(id, out var storedFollow) || storedFollow;
+        _logStickPending.TryGetValue(id, out var pending);
+        _logPinLeft.TryGetValue(id, out var pinLeft);
+        _logRestoreLeft.TryGetValue(id, out var restoreLeft);
+        _logMaxY.TryGetValue(id, out var previousMax);
+        var maxChanged = Math.Abs(maxY - previousMax) > 1f;
+        _logMaxY[id] = maxY;
+
+        var frame = CurrentFrame();
         var windowKey = ImGui.GetID("##stick");
-        var sameWindow = _logWindow.TryGetValue(id, out var previousWindow) && previousWindow == windowKey;
-        _logWindow[id] = windowKey;
-        var measureFrame = !seen || !sameWindow || switchedTab;
+        var drawnLastFrame = _logWindowFrame.TryGetValue(windowKey, out var lastFrame) && lastFrame == frame - 1;
+        _logWindowFrame[windowKey] = frame;
+        var sameTab = _logShownInWindow.TryGetValue(windowKey, out var shown) && shown == id;
+        _logShownInWindow[windowKey] = id;
+        var reappear = !drawnLastFrame || !sameTab || switchedTab;
 
         // A new line is ~16px. Anything under a pixel is the fractional tail
         // left by a 16.5px font at global scale 1.5, not a new message.
-        var grew = seen && sameWindow && contentY > previousY + 1f;
+        var grew = seen && sameTab && !reappear && contentY > previousY + 1f;
         var scrollingUp = ImGui.IsWindowHovered() && ImGui.GetIO().MouseWheel > 0f;
-        if (measureFrame)
-            follow = true;
-        if (scrollingUp && !measureFrame)
-            follow = false;
-        else if (!measureFrame && !pending && !grew && maxY > 1f && y < maxY - 4f)
-            follow = false;
-        else if (measureFrame || pending || maxY <= 1f || y >= maxY - 2f)
-            follow = true;
 
-        // The max on a measure frame belongs to whatever this child drew last.
-        // Apply on the following frame, when it includes these lines.
-        if (follow && !measureFrame && (pending || grew) && maxY > 1f)
+        if (reappear)
+        {
+            pinLeft = follow ? 12 : 0;
+            restoreLeft = follow ? 0 : 12;
+        }
+
+        if (scrollingUp)
+        {
+            follow = false;
+            pinLeft = 0;
+            pending = false;
+        }
+        else if (!reappear && pinLeft == 0 && !pending)
+        {
+            if (!grew && maxY > 1f && y < maxY - 4f)
+                follow = false;
+            else if (maxY <= 1f || y >= maxY - 2f)
+                follow = true;
+        }
+
+        // Only move the scroll when it is not already on the target. Repeating
+        // SetScrollY while the max is fractional is what shook the log at scale 1.5.
+        if (follow && (pinLeft > 0 || pending || grew) && maxY > 1f && y < maxY - 2f)
             ImGui.SetScrollY(MathF.Ceiling(maxY));
+        else if (!follow && restoreLeft > 0 && _logScrollY.TryGetValue(id, out var saved))
+        {
+            var target = maxY > 1f ? MathF.Min(saved, maxY) : saved;
+            if ((maxY + 1f >= saved || restoreLeft == 1) && Math.Abs(y - target) > 2f)
+                ImGui.SetScrollY(target);
+            if (maxY + 1f >= saved && Math.Abs(y - saved) <= 2f && !maxChanged)
+                restoreLeft = 0;
+        }
+
+        if (pinLeft > 0)
+        {
+            var settled = !reappear && !maxChanged && (maxY <= 1f || y >= maxY - 2f);
+            pinLeft = settled ? 0 : pinLeft - 1;
+        }
+
+        if (restoreLeft > 0 && !follow)
+            restoreLeft--;
+
+        if (!reappear && pinLeft == 0 && restoreLeft == 0 && !follow)
+            _logScrollY[id] = y;
 
         _logFollowBottom[id] = follow;
-        _logStickPending[id] = follow && (measureFrame || grew);
+        _logStickPending[id] = follow && grew;
+        _logPinLeft[id] = pinLeft;
+        _logRestoreLeft[id] = restoreLeft;
     }
 
     /// <summary>
