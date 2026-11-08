@@ -54,11 +54,12 @@ public partial class ChatLog : Window, IChatWindow
     private float _vanillaTabBudget = -1f;
 
     // Per tab: last content height, whether the reader is parked on the bottom,
-    // and a one-frame correction after a new line (SetScrollHere's target can
-    // land short of the max that is only known on the next frame).
+    // and a one-frame correction after a new line or a new child (the scroll
+    // max is only known on the frame after the lines are submitted).
     private readonly Dictionary<Guid, float> _logContentY = new();
     private readonly Dictionary<Guid, bool> _logFollowBottom = new();
     private readonly Dictionary<Guid, bool> _logStickPending = new();
+    private readonly Dictionary<Guid, uint> _logWindow = new();
 
     public ChatLog(Plugin plugin) : base($"{Plugin.PluginName}###chat2vanilla")
     {
@@ -704,11 +705,13 @@ public partial class ChatLog : Window, IChatWindow
     }
 
     /// <summary>
-    /// Keep a log that is already at the bottom pinned there when a line arrives.
-    /// SetScrollHereY is not used: ImGui rounds that target with IM_ROUND, then
-    /// clamps to a scroll max that was truncated with IM_TRUNC. At Dalamud scale
-    /// 1.5 those two land on different pixels, so the view jumps on every line.
-    /// Ceiling the max lets the clamp sit on the exact bottom instead.
+    /// Keep a log pinned to the bottom, including the first frame it is drawn.
+    /// A new child (plugin load, pop-out, tab switch) starts at scroll 0, and
+    /// this frame's scroll max still describes the previous contents, so the
+    /// reader looks like they are at the top. That is not them leaving.
+    /// SetScrollHereY is not used: ImGui rounds that target, then clamps to a
+    /// max that was truncated. At Dalamud scale 1.5 those disagree and the
+    /// view shakes. Ceiling the max lets the clamp sit on the exact bottom.
     /// </summary>
     private void StickToBottom(Tab tab, bool switchedTab)
     {
@@ -716,31 +719,39 @@ public partial class ChatLog : Window, IChatWindow
         var maxY = ImGui.GetScrollMaxY();
         var y = ImGui.GetScrollY();
         var contentY = ImGui.GetCursorPosY();
+        var seen = _logContentY.ContainsKey(id);
         _logContentY.TryGetValue(id, out var previousY);
         _logContentY[id] = contentY;
         _logFollowBottom.TryGetValue(id, out var follow);
-        if (!_logFollowBottom.ContainsKey(id))
-            follow = true;
         _logStickPending.TryGetValue(id, out var pending);
+
+        // Main window and pop-out are different children that share a tab id.
+        // A new child starts at the top even when this tab was already followed.
+        var windowKey = ImGui.GetID("##stick");
+        var sameWindow = _logWindow.TryGetValue(id, out var previousWindow) && previousWindow == windowKey;
+        _logWindow[id] = windowKey;
+        var measureFrame = !seen || !sameWindow || switchedTab;
 
         // A new line is ~16px. Anything under a pixel is the fractional tail
         // left by a 16.5px font at global scale 1.5, not a new message.
-        var grew = contentY > previousY + 1f;
+        var grew = seen && sameWindow && contentY > previousY + 1f;
         var scrollingUp = ImGui.IsWindowHovered() && ImGui.GetIO().MouseWheel > 0f;
-        if (scrollingUp)
+        if (measureFrame)
+            follow = true;
+        if (scrollingUp && !measureFrame)
             follow = false;
-        else if (!switchedTab && !grew && maxY > 1f && y < maxY - 4f)
+        else if (!measureFrame && !pending && !grew && maxY > 1f && y < maxY - 4f)
             follow = false;
-        else if (switchedTab || maxY <= 1f || y >= maxY - 2f)
+        else if (measureFrame || pending || maxY <= 1f || y >= maxY - 2f)
             follow = true;
 
-        if (follow && (switchedTab || grew || pending))
+        // The max on a measure frame belongs to whatever this child drew last.
+        // Apply on the following frame, when it includes these lines.
+        if (follow && !measureFrame && (pending || grew) && maxY > 1f)
             ImGui.SetScrollY(MathF.Ceiling(maxY));
 
-        // This frame's max was measured before the new line. One more scroll
-        // next frame reaches the max that includes it.
         _logFollowBottom[id] = follow;
-        _logStickPending[id] = follow && grew;
+        _logStickPending[id] = follow && (measureFrame || grew);
     }
 
     /// <summary>
