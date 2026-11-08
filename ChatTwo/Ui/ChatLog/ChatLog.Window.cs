@@ -678,7 +678,9 @@ public partial class ChatLog : Window, IChatWindow
         var global = ImGuiHelpers.GlobalScale;
         if (!float.IsFinite(global) || global < 0.05f)
             global = 1f;
-        var cellPadY = compact ? 0f : oldCellPadding.Y / global;
+        // Padding is already scaled by Dalamud. Dividing it back can leave a fraction
+        // at global scale 1.5, and a fractional row gap makes the scroll height wobble.
+        var cellPadY = compact ? 0f : MathF.Max(0f, MathF.Round(oldCellPadding.Y / global));
 
         using (ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, Vector2.Zero))
         using (ImRaii.PushStyle(ImGuiStyleVar.CellPadding, oldCellPadding with { Y = cellPadY }))
@@ -703,9 +705,10 @@ public partial class ChatLog : Window, IChatWindow
 
     /// <summary>
     /// Keep a log that is already at the bottom pinned there when a line arrives.
-    /// SetScrollHereY every frame rounded onto a different pixel and the view shook.
-    /// Scroll only when the content actually grew, then once more to the real max
-    /// on the following frame (that max is not known until the new line has been submitted).
+    /// SetScrollHereY is not used: ImGui rounds that target with IM_ROUND, then
+    /// clamps to a scroll max that was truncated with IM_TRUNC. At Dalamud scale
+    /// 1.5 those two land on different pixels, so the view jumps on every line.
+    /// Ceiling the max lets the clamp sit on the exact bottom instead.
     /// </summary>
     private void StickToBottom(Tab tab, bool switchedTab)
     {
@@ -720,7 +723,9 @@ public partial class ChatLog : Window, IChatWindow
             follow = true;
         _logStickPending.TryGetValue(id, out var pending);
 
-        var grew = contentY > previousY + 0.5f;
+        // A new line is ~16px. Anything under a pixel is the fractional tail
+        // left by a 16.5px font at global scale 1.5, not a new message.
+        var grew = contentY > previousY + 1f;
         var scrollingUp = ImGui.IsWindowHovered() && ImGui.GetIO().MouseWheel > 0f;
         if (scrollingUp)
             follow = false;
@@ -729,23 +734,56 @@ public partial class ChatLog : Window, IChatWindow
         else if (switchedTab || maxY <= 1f || y >= maxY - 2f)
             follow = true;
 
-        if (switchedTab || (follow && grew))
-        {
-            ImGui.SetScrollHereY(1f);
-            pending = true;
-        }
-        else if (pending && follow && maxY > 1f)
-        {
-            ImGui.SetScrollY(maxY);
-            pending = false;
-        }
-        else
-        {
-            pending = false;
-        }
+        if (follow && (switchedTab || grew || pending))
+            ImGui.SetScrollY(MathF.Ceiling(maxY));
 
+        // This frame's max was measured before the new line. One more scroll
+        // next frame reaches the max that includes it.
         _logFollowBottom[id] = follow;
-        _logStickPending[id] = pending;
+        _logStickPending[id] = follow && grew;
+    }
+
+    /// <summary>
+    /// Smallest whole pixel that is not shorter than <paramref name="value"/>.
+    /// Round-to-even would turn the 16.5px line at global scale 1.5 into 16
+    /// and clip the glyph; the stored height would then disagree with the draw.
+    /// </summary>
+    private static float WholePixels(float value)
+    {
+        if (!float.IsFinite(value) || value <= 0f)
+            return 0f;
+
+        return MathF.Max(1f, MathF.Ceiling(value - 0.001f));
+    }
+
+    /// <summary>
+    /// Pad the row that just drew so its height is the whole-pixel value stored for the dummy.
+    /// </summary>
+    private static void SnapRowHeight(float rowTop, Message message, Guid tabId)
+    {
+        var drawn = ImGui.GetCursorPosY() - rowTop;
+        var whole = WholePixels(drawn);
+        var gap = whole - drawn;
+        if (gap > 0.01f)
+            ImGui.Dummy(new Vector2(1f, gap));
+        if (whole > 0f)
+            message.Height[tabId] = whole;
+    }
+
+    /// <summary>
+    /// ImGui stores the child content height as IM_TRUNC(cursor - start). A 16.5px
+    /// font at global scale 1.5 leaves a half pixel, and that half is dropped on
+    /// one line and kept on the next, which is the shake. Pad so the remainder is 0.
+    /// </summary>
+    private static void SnapContentEnd()
+    {
+        var rel = ImGui.GetCursorPosY() - ImGui.GetCursorStartPos().Y;
+        if (!float.IsFinite(rel) || rel <= 0f)
+            return;
+
+        var gap = MathF.Ceiling(rel - 0.001f) - rel;
+        if (gap > 0.01f)
+            ImGui.Dummy(new Vector2(1f, gap));
     }
 
     private void DrawMessages(Tab tab, PayloadHandler handler, bool isTable, bool moreCompact = false, float oldCellPaddingY = 0)
@@ -819,7 +857,10 @@ public partial class ChatLog : Window, IChatWindow
                 {
                     var prevMessage = messages[i - 1];
                     prevMessage.Height.TryGetValue(tab.Identifier, out var prevHeight);
-                    if (prevHeight == null || (prevMessage.IsVisible.TryGetValue(tab.Identifier, out var prevVisible) && prevVisible))
+                    // A snapped height is the value the offscreen dummy will reuse.
+                    // Measuring again and subtracting cell padding disagrees with that
+                    // dummy by a fraction at global scale 1.5, so the content size flips.
+                    if (prevHeight is not float existing || existing <= 0f)
                     {
                         var newHeight = ImGui.GetCursorPosY() - lastPosY;
 
@@ -827,8 +868,8 @@ public partial class ChatLog : Window, IChatWindow
                         if (isTable && !moreCompact)
                             newHeight -= oldCellPaddingY * 2;
 
-                        if (newHeight != 0)
-                            prevMessage.Height[tab.Identifier] = newHeight;
+                        if (newHeight > 0.5f)
+                            prevMessage.Height[tab.Identifier] = WholePixels(newHeight);
                     }
                 }
                 lastPosY = ImGui.GetCursorPosY();
@@ -840,17 +881,21 @@ public partial class ChatLog : Window, IChatWindow
                 message.Height.TryGetValue(tab.Identifier, out var height);
                 if (height is float known && known > 0f)
                 {
+                    var rowHeight = WholePixels(known);
+                    if (Math.Abs(rowHeight - known) > 0.01f)
+                        message.Height[tab.Identifier] = rowHeight;
+
                     var top = ImGui.GetCursorPosY();
                     var bandTop = ImGui.GetScrollY();
                     var bandBottom = bandTop + ImGui.GetWindowHeight();
                     const float margin = 8f;
-                    var onScreen = top + known >= bandTop - margin && top <= bandBottom + margin;
+                    var onScreen = top + rowHeight >= bandTop - margin && top <= bandBottom + margin;
                     if (!onScreen)
                     {
                         if (isTable)
                             ImGui.TableNextColumn();
 
-                        ImGui.Dummy(new Vector2(10f, known));
+                        ImGui.Dummy(new Vector2(10f, rowHeight));
                         message.IsVisible[tab.Identifier] = false;
                         continue;
                     }
@@ -905,8 +950,11 @@ public partial class ChatLog : Window, IChatWindow
                 else
                     InputHandler.ChunkHandler.DrawChunks(message.Content, true, handler, lineWidth);
 
+                SnapRowHeight(lastPosY, message, tab.Identifier);
                 message.IsVisible[tab.Identifier] = ImGui.IsItemVisible();
             }
+
+            SnapContentEnd();
         }
         catch (ApplicationException)
         {

@@ -3461,6 +3461,24 @@ namespace ChatTwo.Resources {
                 return ResourceManager.GetString("Options_Tabs_Delete", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Clone.
+        /// </summary>
+        internal static string Options_Tabs_Clone {
+            get {
+                return ResourceManager.GetString("Options_Tabs_Clone", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Make a copy of this tab with the same channels, filters, and colors.
+        /// </summary>
+        internal static string Options_Tabs_Clone_Description {
+            get {
+                return ResourceManager.GetString("Options_Tabs_Clone_Description", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to All.

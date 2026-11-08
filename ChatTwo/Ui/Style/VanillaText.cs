@@ -1,7 +1,6 @@
 using System.Numerics;
 using System.Text;
 using Dalamud.Bindings.ImGui;
-using Dalamud.Interface.Utility;
 
 namespace ChatTwo.Ui.Style;
 
@@ -25,7 +24,10 @@ public static class VanillaText
         var font = ImGui.GetFont();
         var size = ImGui.GetFontSize();
         var drawList = ImGui.GetWindowDrawList();
-        var distance = MathF.Max(1f, ImGuiHelpers.GlobalScale * 0.75f);
+        // One screen pixel. Scaling this by GlobalScale (1.125 at 1.5) covered the
+        // stem of the smaller AXIS face that size selects, so the styled glyph
+        // never showed and the line read as the untinted font.
+        var distance = 1f;
         var color = ImGui.GetColorU32(new Vector4(0f, 0f, 0f, 0.95f));
         foreach (var offset in Offsets)
             drawList.AddText(font, size, pos + offset * distance, color, text);

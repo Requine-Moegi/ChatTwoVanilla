@@ -88,6 +88,47 @@ public static class ChatTypeExt
         // UI.
     ];
 
+    /// <summary>
+    /// Log kinds from the client are 7 bits. A raw value with source or target
+    /// bits still set is not the bare enum, so mask those off. Extra Chat ids
+    /// sit above 1000 and are left alone.
+    /// </summary>
+    public static ChatType Normalize(ushort raw)
+    {
+        if (raw >= 1000 && Enum.IsDefined(typeof(ChatType), (ChatType)raw))
+            return (ChatType)raw;
+
+        var masked = (ushort)(raw & 0x7F);
+        if (Enum.IsDefined(typeof(ChatType), (ChatType)masked))
+            return (ChatType)masked;
+
+        if (Enum.IsDefined(typeof(ChatType), (ChatType)raw))
+            return (ChatType)raw;
+
+        return (ChatType)masked;
+    }
+
+    /// <summary>
+    /// Channels the game paints with the item-notice swatch (the yellow "You obtain" lines).
+    /// </summary>
+    public static bool UsesItemNoticeColor(this ChatType type)
+        => Normalize((ushort)type) == ChatType.LootNotice;
+
+    public static bool IsPlayerChannel(this ChatType type) => Normalize((ushort)type) switch
+    {
+        ChatType.Say or ChatType.Shout or ChatType.TellOutgoing or ChatType.TellIncoming
+            or ChatType.Party or ChatType.CrossParty
+            or ChatType.Linkshell1 or ChatType.Linkshell2 or ChatType.Linkshell3 or ChatType.Linkshell4
+            or ChatType.Linkshell5 or ChatType.Linkshell6 or ChatType.Linkshell7 or ChatType.Linkshell8
+            or ChatType.CrossLinkshell1 or ChatType.CrossLinkshell2 or ChatType.CrossLinkshell3 or ChatType.CrossLinkshell4
+            or ChatType.CrossLinkshell5 or ChatType.CrossLinkshell6 or ChatType.CrossLinkshell7 or ChatType.CrossLinkshell8
+            or ChatType.FreeCompany or ChatType.NoviceNetwork or ChatType.Yell
+            or ChatType.ExtraChatLinkshell1 or ChatType.ExtraChatLinkshell2 or ChatType.ExtraChatLinkshell3 or ChatType.ExtraChatLinkshell4
+            or ChatType.ExtraChatLinkshell5 or ChatType.ExtraChatLinkshell6 or ChatType.ExtraChatLinkshell7 or ChatType.ExtraChatLinkshell8
+            => true,
+        _ => false,
+    };
+
     public static string Name(this ChatType type)
     {
         return type switch

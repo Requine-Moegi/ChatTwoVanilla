@@ -15,6 +15,11 @@ tags:
   - Chat
   - Replacement
 changelog: |-
+  **1.43.19**
+  - Pop-out logs stay still at Dalamud scale 1.5
+  - "You obtain" lines fall back to the vanilla yellow
+  - Clone button on each tab in settings
+
   **1.43.18**
   - Pop-out logs stay put when new lines arrive
   - "You obtain" lines use the game's loot color

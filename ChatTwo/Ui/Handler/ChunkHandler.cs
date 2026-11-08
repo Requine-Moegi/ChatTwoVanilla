@@ -4,6 +4,7 @@ using ChatTwo.Ui.Style;
 using ChatTwo.Util;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 
 namespace ChatTwo.Ui.Handler;
@@ -103,11 +104,29 @@ public class ChunkHandler
             }
         }
 
+        var type = text.FallbackColor is ChatType fallback ? ChatTypeExt.Normalize((ushort)fallback) : (ChatType?)null;
+        var obtain = IsObtainChunk(chunk, text, type);
         var color = text.Color;
-        if (color == null && text.FallbackColor != null)
+        // A white item-rarity payload, or a failed swatch read, was covering the yellow
+        // the game uses for "You obtain". Keep real rarity colors (green, blue, purple).
+        // The push below is unconditional for these lines: a null Vector4 does not push,
+        // and the style color left in place is white.
+        if (obtain && (color == null || ColourUtil.IsNearWhite(color.Value)))
+            color = LootYellow();
+        else if (color == null && type != null)
+            color = VanillaGameLook.ResolveChannelColor(type.Value);
+
+        if (obtain && chunk.Message is { LoggedLootColor: false } message)
         {
-            var type = text.FallbackColor.Value;
-            color = VanillaGameLook.ResolveChannelColor(type);
+            message.LoggedLootColor = true;
+            var code = message.Code;
+            var resolved = color == null ? "none" : ColourUtil.Vector4ToRgbaHex(color.Value);
+            var fg = text.Foreground?.ToString("X8") ?? "none";
+            var snippet = (text.Content ?? "").Replace("\n", " ");
+            if (snippet.Length > 80)
+                snippet = snippet[..80];
+            var scale = ImGuiHelpers.GlobalScale;
+            Plugin.Log.Information($"Loot color: type={code.Type} ({(ushort)code.Type}) raw={code.RawLogKind} source={code.Source} target={code.Target} fg={fg} resolved={resolved} globalScale={scale:0.##} text=\"{snippet}\"");
         }
 
         using var pushedColor = ImRaii.PushColor(ImGuiCol.Text, color);
@@ -153,5 +172,60 @@ public class ChunkHandler
         }
 
         italicFont?.Dispose();
+    }
+
+    /// <summary>
+    /// Vanilla yellow for "You obtain". Used when the game swatch is missing or white,
+    /// including the item-name chunk, which carries its own foreground and does not
+    /// contain the word itself.
+    /// </summary>
+    private static Vector4 LootYellow()
+    {
+        var resolved = VanillaGameLook.ResolveChannelColor(ChatType.LootNotice);
+        if (resolved == null || ColourUtil.IsNearWhite(resolved.Value))
+            return new Vector4(1f, 1f, 176f / 255f, 1f);
+        return resolved.Value;
+    }
+
+    /// <summary>
+    /// The loot type, or a non-player line whose text says "obtain". The item name is
+    /// a later chunk of the same message, so the check looks at the message, not only
+    /// the chunk being drawn. Global scale does not choose a different color path;
+    /// the scale is logged with the resolved color when one of these lines draws.
+    /// </summary>
+    private static bool IsObtainChunk(Chunk chunk, TextChunk text, ChatType? type)
+    {
+        if (type is ChatType kind && (kind.UsesItemNoticeColor() || IsObtainLine(kind, text.Content)))
+            return true;
+
+        var message = chunk.Message;
+        if (message == null)
+            return false;
+
+        if (message.Code.Type.UsesItemNoticeColor())
+            return true;
+
+        if (message.Code.Type.IsPlayerChannel())
+            return false;
+
+        foreach (var part in message.Content)
+        {
+            if (part is TextChunk other && IsObtainLine(message.Code.Type, other.Content))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// "You obtain" lines that arrived under a system-style type instead of LootNotice.
+    /// Spoken channels are left alone so a player saying the words is not recolored.
+    /// </summary>
+    private static bool IsObtainLine(ChatType type, string? text)
+    {
+        if (type.IsPlayerChannel() || string.IsNullOrEmpty(text))
+            return false;
+
+        return text.Contains("obtain", StringComparison.OrdinalIgnoreCase);
     }
 }

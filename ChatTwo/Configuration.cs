@@ -446,6 +446,43 @@ public class Tab
     }
 
     /// <summary>
+    /// A new tab with the same channels, filters, colors, and vanilla settings.
+    /// Lists and the tell target are copied. Pop-out position and unread are not.
+    /// </summary>
+    public Tab Duplicate()
+    {
+        return new Tab
+        {
+            Name = $"{Name} (copy)",
+            SelectedChannels = SelectedChannels.ToDictionary(pair => pair.Key, pair => pair.Value),
+            ExtraChatAll = ExtraChatAll,
+            ExtraChatChannels = ExtraChatChannels.ToHashSet(),
+            UnreadMode = UnreadMode,
+            UnhideOnActivity = UnhideOnActivity,
+            DisplayTimestamp = DisplayTimestamp,
+            Channel = Channel,
+            PopOut = PopOut,
+            IndependentOpacity = IndependentOpacity,
+            Opacity = Opacity,
+            InputDisabled = InputDisabled,
+            SupportsInput = SupportsInput,
+            CanMove = CanMove,
+            CanResize = CanResize,
+            LogBackgroundTint = LogBackgroundTint,
+            LogBackgroundColor = LogBackgroundColor,
+            IndependentHide = IndependentHide,
+            HideDuringCutscenes = HideDuringCutscenes,
+            HideWhenNotLoggedIn = HideWhenNotLoggedIn,
+            HideWhenUiHidden = HideWhenUiHidden,
+            HideInLoadingScreens = HideInLoadingScreens,
+            HideInBattle = HideInBattle,
+            HideWhenInactive = HideWhenInactive,
+            AllSenderMessages = AllSenderMessages,
+            TellTarget = TellTarget.Clone(),
+        };
+    }
+
+    /// <summary>
     /// MessageList provides an ordered list of messages with duplicate ID
     /// tracking, sorting and mutex protection.
     /// </summary>

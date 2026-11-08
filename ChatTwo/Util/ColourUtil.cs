@@ -78,13 +78,24 @@ public static class ColourUtil
         => BinaryPrimitives.ReverseEndianness(rgba);
 
     /// <summary>
-    /// Converts the given components to an RGBA color value as uint.
+    /// True for white and the near-white Say default. A failed color read often lands here.
     /// </summary>
-    /// <param name="red">The byte value for red</param>
-    /// <param name="green">The byte value for green</param>
-    /// <param name="blue">The byte value for blue</param>
-    /// <param name="alpha">The byte value for alpha</param>
-    /// <returns>Color as byte representation RR GG BB AA</returns>
+    public static bool IsNearWhite(uint rgba)
+    {
+        var (r, g, b, _) = RgbaToRgbaComponents(rgba);
+        return r >= 245 && g >= 245 && b >= 245;
+    }
+
+    public static bool IsNearWhite(Vector4 color)
+        => color.X >= 245f / 255f && color.Y >= 245f / 255f && color.Z >= 245f / 255f;
+
+    public static string Vector4ToRgbaHex(Vector4 color)
+        => ComponentsToRgba(
+            (byte)Math.Round(color.X * 255),
+            (byte)Math.Round(color.Y * 255),
+            (byte)Math.Round(color.Z * 255),
+            (byte)Math.Round(color.W * 255)).ToString("X8");
+
     public static uint ComponentsToRgba(byte red, byte green, byte blue, byte alpha = 0xFF)
         => alpha | (uint) (red << 24) | (uint) (green << 16) | (uint) (blue << 8);
 

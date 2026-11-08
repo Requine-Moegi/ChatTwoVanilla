@@ -217,6 +217,12 @@
     <data name="Options_Tabs_Delete">
         <value>Delete</value>
     </data>
+    <data name="Options_Tabs_Clone">
+        <value>Clone</value>
+    </data>
+    <data name="Options_Tabs_Clone_Description">
+        <value>Make a copy of this tab with the same channels, filters, and colors.</value>
+    </data>
     <data name="Options_Tabs_MoveUp">
         <value>Move up</value>
     </data>

@@ -3,6 +3,7 @@ using ChatTwo.Code;
 using ChatTwo.GameFunctions.Types;
 using ChatTwo.Resources;
 using ChatTwo.Util;
+using Dalamud.Game.Config;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Hooking;
 using Dalamud.Memory;
@@ -120,6 +121,10 @@ public sealed unsafe class Chat : IDisposable
     // If this function ever returns 0, it returns null instead.
     public uint? GetChannelColor(ChatType type)
     {
+        type = ChatTypeExt.Normalize((ushort)type);
+        if (type.UsesItemNoticeColor())
+            return ItemNoticeColor();
+
         var parent = type.Parent();
         switch (parent)
         {
@@ -135,7 +140,28 @@ public sealed unsafe class Chat : IDisposable
         if (rgb == 0)
             return null;
 
-        return 0xFF | (rgb << 8);
+        return 0xFFu | (rgb << 8);
+    }
+
+    /// <summary>
+    /// The loot-notice swatch. A missing, zero, or white read is the failed lookup
+    /// that was painting "You obtain" with Say's white, so use the vanilla yellow.
+    /// </summary>
+    private uint ItemNoticeColor()
+    {
+        var fallback = ChatType.LootNotice.DefaultColor() ?? ColourUtil.ComponentsToRgba(255, 255, 176);
+        if (!Plugin.GameConfig.TryGet(UiConfigOption.ColorItemNotice, out uint color))
+            return fallback;
+
+        var rgb = color & 0xFFFFFF;
+        if (rgb == 0)
+            return fallback;
+
+        var packed = 0xFFu | (rgb << 8);
+        if (ColourUtil.IsNearWhite(packed))
+            return fallback;
+
+        return packed;
     }
 
     private void Login()

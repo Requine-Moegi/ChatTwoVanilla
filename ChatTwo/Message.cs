@@ -33,6 +33,7 @@ public partial class Message
     public int Hash { get; }
     public Dictionary<Guid, float?> Height { get; } = new();
     public Dictionary<Guid, bool> IsVisible { get; } = new();
+    public bool LoggedLootColor;
 
     public Message(ulong receiver, ulong contentId, ulong accountId, ChatCode code, List<Chunk> sender, List<Chunk> content, SeString senderSource, SeString contentSource)
     {

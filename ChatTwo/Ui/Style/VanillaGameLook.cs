@@ -168,6 +168,7 @@ public static class VanillaGameLook
 
     public static Vector4? ResolveChannelColor(ChatType type)
     {
+        type = ChatTypeExt.Normalize((ushort)type);
         if (Plugin.Config.ChatColours.TryGetValue(type, out var overridden))
             return ColourUtil.RgbaToVector4(overridden);
 

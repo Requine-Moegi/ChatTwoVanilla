@@ -5,12 +5,14 @@ namespace ChatTwo.Code;
 public class ChatCode
 {
     public ChatType Type { get; }
+    public ushort RawLogKind { get; }
     public XivChatRelationKind Source { get; }
     public XivChatRelationKind Target { get; }
 
     public ChatCode(XivChatType type, XivChatRelationKind source, XivChatRelationKind target)
     {
-        Type = (ChatType)type;
+        RawLogKind = (ushort)type;
+        Type = ChatTypeExt.Normalize(RawLogKind);
         Source = source;
         Target = target;
     }

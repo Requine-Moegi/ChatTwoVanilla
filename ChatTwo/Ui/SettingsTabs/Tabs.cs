@@ -54,6 +54,7 @@ public sealed class Tabs : ISettingsTab
         }
 
         var toRemove = -1;
+        var cloneAt = -1;
         var doOpens = ToOpen > -2;
         for (var i = 0; i < Mutable.Tabs.Count; i++)
         {
@@ -89,6 +90,11 @@ public sealed class Tabs : ISettingsTab
                 (Mutable.Tabs[i + 1], Mutable.Tabs[i]) = (Mutable.Tabs[i], Mutable.Tabs[i + 1]);
                 ToOpen = i + 1;
             }
+
+            ImGui.SameLine();
+            if (ImGui.Button(Language.Options_Tabs_Clone))
+                cloneAt = i;
+            ImGuiUtil.HelpText(Language.Options_Tabs_Clone_Description);
 
             ImGui.InputText(Language.Options_Tabs_Name, ref tab.Name, 512, ImGuiInputTextFlags.EnterReturnsTrue);
             ImGui.Checkbox(Language.Options_Tabs_ShowTimestamps, ref tab.DisplayTimestamp);
@@ -238,6 +244,12 @@ public sealed class Tabs : ISettingsTab
             ImGuiUtil.ExtraChatSelector(Language.Options_Tabs_ExtraChatChannels, ref tab.ExtraChatAll, tab.ExtraChatChannels);
             if (tab.Channel == InputChannel.Tell && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                 ImGui.SetTooltip(Language.Options_Tabs_TellTabChannelSelection);
+        }
+
+        if (cloneAt > -1)
+        {
+            Mutable.Tabs.Insert(cloneAt + 1, Mutable.Tabs[cloneAt].Duplicate());
+            ToOpen = cloneAt + 1;
         }
 
         if (toRemove > -1)
